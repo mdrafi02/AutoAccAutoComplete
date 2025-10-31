@@ -13,6 +13,7 @@ from typing import List, Dict, Tuple, Set, Optional
 import re
 from dataclasses import dataclass
 from robot_keyword_extractor import RobotKeywordExtractor
+import os
 
 
 @dataclass
@@ -235,11 +236,12 @@ class RobotKeywordRecommender:
             self.analyzer.load_model(model_file)
     
     def train_on_output_files(self, output_files: List[str], save_model: str = None):
-        """Train the recommendation system on multiple output files."""
+        """Train the recommendation system on multiple output files (XML or HTML)."""
         print(f"Training on {len(output_files)} output files...")
         
         for i, output_file in enumerate(output_files, 1):
-            print(f"Processing file {i}/{len(output_files)}: {output_file}")
+            file_type = "log.html" if output_file.lower().endswith(('.html', '.htm')) else "output.xml"
+            print(f"Processing file {i}/{len(output_files)} ({file_type}): {output_file}")
             try:
                 self.analyzer.analyze_output_file(output_file)
             except Exception as e:

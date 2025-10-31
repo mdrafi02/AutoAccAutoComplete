@@ -23,6 +23,8 @@ A Python script that reads Robot Framework `output.xml` files and lists all keyw
 ```bash
 # Basic usage - list all keywords in execution order
 python robot_keyword_extractor.py output.xml
+# Or use log.html
+python robot_keyword_extractor.py log.html
 
 # Show detailed information for each keyword
 python robot_keyword_extractor.py output.xml -d
@@ -153,7 +155,7 @@ The script includes comprehensive error handling for:
 
 ## Limitations
 
-- Requires Robot Framework output.xml file (not log.html or report.html)
+- Supports both Robot Framework output.xml and log.html files
 - Only processes keywords, not test cases or test suites directly
 - Timing information depends on Robot Framework version and configuration
 

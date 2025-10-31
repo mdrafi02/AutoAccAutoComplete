@@ -25,11 +25,11 @@ pip install -r requirements.txt
 First, train the recommendation system on your Robot Framework test outputs:
 
 ```bash
-# Train on one or more output.xml files
+# Train on one or more output.xml or log.html files
 python robot_keyword_recommender.py --train output.xml --save-model robot_keyword_model.pkl
 
-# Train on multiple files
-python robot_keyword_recommender.py --train output1.xml output2.xml output3.xml --save-model robot_keyword_model.pkl
+# Train on multiple files (mix of XML and HTML)
+python robot_keyword_recommender.py --train output1.xml log.html output2.xml --save-model robot_keyword_model.pkl
 ```
 
 ### 2. Start the Web Interface
