@@ -228,8 +228,18 @@ function displayRecommendations(recommendations, containerElement) {
             border-radius: 4px;
             cursor: pointer;
         " onclick="selectRecommendedKeyword('${rec.keyword}')">
-            <div style="display: flex; justify-content: space-between;">
-                <strong>${rec.keyword}</strong>
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <div style="display: flex; align-items: center; gap: 8px;">
+                    <strong>${rec.keyword}</strong>
+                    <span style="
+                        background: #667eea;
+                        color: white;
+                        padding: 3px 10px;
+                        border-radius: 12px;
+                        font-size: 0.8em;
+                        font-weight: 600;
+                    ">${rec.library || 'BuiltIn'}</span>
+                </div>
                 <span style="
                     background: #667eea;
                     color: white;
@@ -238,8 +248,8 @@ function displayRecommendations(recommendations, containerElement) {
                     font-size: 0.85em;
                 ">${(rec.confidence * 100).toFixed(0)}%</span>
             </div>
-            <div style="color: #666; font-size: 0.9em; margin-top: 4px;">
-                ${rec.library} • Used ${rec.usage_count} times
+            <div style="color: #666; font-size: 0.9em; margin-top: 6px;">
+                Used ${rec.usage_count} times
             </div>
         </div>
     `).join('');

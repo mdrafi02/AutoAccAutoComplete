@@ -352,9 +352,15 @@ def main():
     if args.recommend:
         recommendations = recommender.get_recommendations(args.recommend)
         print(f"\nRecommendations for '{args.recommend}':")
+        print("=" * 80)
         for i, rec in enumerate(recommendations, 1):
-            print(f"{i:2d}. {rec['keyword']} ({rec['library']}) - "
-                  f"Confidence: {rec['confidence']:.3f}, Usage: {rec['usage_count']}")
+            library = rec['library'] or 'BuiltIn'
+            print(f"{i:2d}. {rec['keyword']}")
+            print(f"    Library: {library}")
+            print(f"    Confidence: {rec['confidence']:.1%} | Usage Count: {rec['usage_count']}")
+            if rec['next_keywords']:
+                print(f"    Often followed by: {', '.join(rec['next_keywords'][:3])}")
+            print()
     
     if args.autocomplete:
         suggestions = recommender.get_autocomplete(args.autocomplete)
@@ -366,9 +372,12 @@ def main():
     if args.context:
         recommendations = recommender.get_context_recommendations(args.context)
         print(f"\nContext-based recommendations for: {' -> '.join(args.context)}")
+        print("=" * 80)
         for i, rec in enumerate(recommendations, 1):
-            print(f"{i:2d}. {rec['keyword']} ({rec['library']}) - "
-                  f"Confidence: {rec['confidence']:.3f}")
+            library = rec['library'] or 'BuiltIn'
+            print(f"{i:2d}. {rec['keyword']} [{library}]")
+            print(f"    Confidence: {rec['confidence']:.1%} | Usage: {rec['usage_count']}")
+            print()
     
     if args.popular:
         popular = recommender.get_popular_keywords(args.popular)

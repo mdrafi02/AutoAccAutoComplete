@@ -464,11 +464,14 @@
             recommendationsContainer.innerHTML = recommendations.map((rec, index) => `
                 <div class="recommendation-item">
                     <div class="recommendation-header">
-                        <span class="keyword-name">${rec.keyword}</span>
+                        <div style="display: flex; align-items: center; gap: 10px;">
+                            <span class="keyword-name">${rec.keyword}</span>
+                            <span class="library-badge">${rec.library || 'BuiltIn'}</span>
+                        </div>
                         <span class="confidence-score">${(rec.confidence * 100).toFixed(1)}%</span>
                     </div>
                     <div class="recommendation-details">
-                        <span><strong>Library:</strong> ${rec.library}</span>
+                        <span><strong>Library:</strong> ${rec.library || 'BuiltIn'}</span>
                         <span><strong>Usage Count:</strong> ${rec.usage_count}</span>
                     </div>
                     ${rec.next_keywords && rec.next_keywords.length > 0 ? `
