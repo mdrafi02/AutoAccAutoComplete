@@ -1,0 +1,498 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Robot Framework Keyword Recommender</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+        
+        .header p {
+            opacity: 0.9;
+            font-size: 1.1em;
+        }
+        
+        .main-content {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+            padding: 30px;
+        }
+        
+        .input-section, .results-section {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 20px;
+        }
+        
+        .section-title {
+            font-size: 1.3em;
+            margin-bottom: 15px;
+            color: #333;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 10px;
+        }
+        
+        .input-group {
+            margin-bottom: 20px;
+        }
+        
+        label {
+            display: block;
+            margin-bottom: 8px;
+            font-weight: 600;
+            color: #555;
+        }
+        
+        input[type="text"], textarea {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 6px;
+            font-size: 1em;
+            transition: border-color 0.3s;
+        }
+        
+        input[type="text"]:focus, textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        textarea {
+            min-height: 100px;
+            resize: vertical;
+            font-family: monospace;
+        }
+        
+        .autocomplete-container {
+            position: relative;
+        }
+        
+        .autocomplete-dropdown {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background: white;
+            border: 2px solid #667eea;
+            border-top: none;
+            border-radius: 0 0 6px 6px;
+            max-height: 300px;
+            overflow-y: auto;
+            z-index: 1000;
+            display: none;
+        }
+        
+        .autocomplete-item {
+            padding: 12px;
+            cursor: pointer;
+            border-bottom: 1px solid #eee;
+            transition: background 0.2s;
+        }
+        
+        .autocomplete-item:hover {
+            background: #f0f0f0;
+        }
+        
+        .autocomplete-item:last-child {
+            border-bottom: none;
+        }
+        
+        .autocomplete-item strong {
+            color: #667eea;
+        }
+        
+        .library-badge {
+            display: inline-block;
+            background: #667eea;
+            color: white;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 0.8em;
+            margin-left: 8px;
+        }
+        
+        button {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            font-size: 1em;
+            font-weight: 600;
+            cursor: pointer;
+            transition: transform 0.2s, box-shadow 0.2s;
+            width: 100%;
+        }
+        
+        button:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+        }
+        
+        button:active {
+            transform: translateY(0);
+        }
+        
+        .recommendations {
+            margin-top: 20px;
+        }
+        
+        .recommendation-item {
+            background: white;
+            border: 2px solid #ddd;
+            border-radius: 6px;
+            padding: 15px;
+            margin-bottom: 10px;
+            transition: border-color 0.3s, transform 0.2s;
+        }
+        
+        .recommendation-item:hover {
+            border-color: #667eea;
+            transform: translateX(5px);
+        }
+        
+        .recommendation-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+        }
+        
+        .keyword-name {
+            font-size: 1.2em;
+            font-weight: 600;
+            color: #333;
+        }
+        
+        .confidence-score {
+            background: #667eea;
+            color: white;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.9em;
+        }
+        
+        .recommendation-details {
+            display: flex;
+            gap: 15px;
+            margin-top: 10px;
+            font-size: 0.9em;
+            color: #666;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #667eea;
+        }
+        
+        .error {
+            background: #fee;
+            color: #c33;
+            padding: 15px;
+            border-radius: 6px;
+            margin-top: 10px;
+        }
+        
+        .context-keywords {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 10px;
+        }
+        
+        .context-tag {
+            background: #667eea;
+            color: white;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.85em;
+        }
+        
+        @media (max-width: 768px) {
+            .main-content {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>🤖 Robot Framework Keyword Recommender</h1>
+            <p>Intelligent autocomplete and recommendations for faster test case creation</p>
+        </div>
+        
+        <div class="main-content">
+            <div class="input-section">
+                <h2 class="section-title">Input</h2>
+                
+                <div class="input-group">
+                    <label for="keyword-input">Current Keyword (with autocomplete)</label>
+                    <div class="autocomplete-container">
+                        <input type="text" id="keyword-input" placeholder="Start typing a keyword...">
+                        <div class="autocomplete-dropdown" id="autocomplete-dropdown"></div>
+                    </div>
+                </div>
+                
+                <div class="input-group">
+                    <label for="context-input">Context (Previous Keywords, one per line)</label>
+                    <textarea id="context-input" placeholder="Login SCG System&#10;Create Dictionary&#10;Session Login"></textarea>
+                </div>
+                
+                <button onclick="getRecommendations()">Get Recommendations</button>
+                <button onclick="getContextRecommendations()" style="margin-top: 10px; background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
+                    Get Context-Based Recommendations
+                </button>
+            </div>
+            
+            <div class="results-section">
+                <h2 class="section-title">Recommendations</h2>
+                <div id="recommendations-container">
+                    <div class="loading" style="display: none;" id="loading">Loading recommendations...</div>
+                    <div id="recommendations"></div>
+                    <div id="error-container"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        const keywordInput = document.getElementById('keyword-input');
+        const contextInput = document.getElementById('context-input');
+        const autocompleteDropdown = document.getElementById('autocomplete-dropdown');
+        const recommendationsContainer = document.getElementById('recommendations');
+        const loadingIndicator = document.getElementById('loading');
+        const errorContainer = document.getElementById('error-container');
+        
+        let autocompleteTimeout;
+        
+        // Autocomplete functionality
+        keywordInput.addEventListener('input', function() {
+            const value = this.value.trim();
+            
+            clearTimeout(autocompleteTimeout);
+            
+            if (value.length < 2) {
+                autocompleteDropdown.style.display = 'none';
+                return;
+            }
+            
+            autocompleteTimeout = setTimeout(() => {
+                fetch('/api/autocomplete', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ keyword: value })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.error) {
+                        showError(data.error);
+                        return;
+                    }
+                    
+                    displayAutocomplete(data.suggestions);
+                })
+                .catch(error => {
+                    showError('Error fetching autocomplete: ' + error.message);
+                });
+            }, 300);
+        });
+        
+        function displayAutocomplete(suggestions) {
+            if (suggestions.length === 0) {
+                autocompleteDropdown.style.display = 'none';
+                return;
+            }
+            
+            autocompleteDropdown.innerHTML = suggestions.map(sug => `
+                <div class="autocomplete-item" onclick="selectKeyword('${sug.keyword.replace(/'/g, "\\'")}')">
+                    <strong>${highlightMatch(sug.keyword, keywordInput.value)}</strong>
+                    <span class="library-badge">${sug.library}</span>
+                    <div style="font-size: 0.85em; color: #666; margin-top: 4px;">
+                        Used ${sug.frequency} times
+                    </div>
+                </div>
+            `).join('');
+            
+            autocompleteDropdown.style.display = 'block';
+        }
+        
+        function highlightMatch(text, query) {
+            const regex = new RegExp(`(${query})`, 'gi');
+            return text.replace(regex, '<mark>$1</mark>');
+        }
+        
+        function selectKeyword(keyword) {
+            keywordInput.value = keyword;
+            autocompleteDropdown.style.display = 'none';
+            getRecommendations();
+        }
+        
+        // Close autocomplete when clicking outside
+        document.addEventListener('click', function(e) {
+            if (!keywordInput.contains(e.target) && !autocompleteDropdown.contains(e.target)) {
+                autocompleteDropdown.style.display = 'none';
+            }
+        });
+        
+        function getRecommendations() {
+            const keyword = keywordInput.value.trim();
+            const context = contextInput.value.trim();
+            
+            if (!keyword) {
+                showError('Please enter a keyword');
+                return;
+            }
+            
+            loadingIndicator.style.display = 'block';
+            errorContainer.innerHTML = '';
+            recommendationsContainer.innerHTML = '';
+            
+            fetch('/api/recommend', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    keyword: keyword,
+                    context: context,
+                    max_recommendations: 10
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                loadingIndicator.style.display = 'none';
+                
+                if (data.error) {
+                    showError(data.error);
+                    return;
+                }
+                
+                displayRecommendations(data.recommendations);
+            })
+            .catch(error => {
+                loadingIndicator.style.display = 'none';
+                showError('Error fetching recommendations: ' + error.message);
+            });
+        }
+        
+        function getContextRecommendations() {
+            const contextText = contextInput.value.trim();
+            
+            if (!contextText) {
+                showError('Please enter context keywords');
+                return;
+            }
+            
+            const contextKeywords = contextText.split('\n')
+                .map(line => line.trim())
+                .filter(line => line.length > 0);
+            
+            loadingIndicator.style.display = 'block';
+            errorContainer.innerHTML = '';
+            recommendationsContainer.innerHTML = '';
+            
+            fetch('/api/context', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    keywords: contextKeywords,
+                    max_recommendations: 10
+                })
+            })
+            .then(response => response.json())
+            .then(data => {
+                loadingIndicator.style.display = 'none';
+                
+                if (data.error) {
+                    showError(data.error);
+                    return;
+                }
+                
+                displayRecommendations(data.recommendations);
+            })
+            .catch(error => {
+                loadingIndicator.style.display = 'none';
+                showError('Error fetching context recommendations: ' + error.message);
+            });
+        }
+        
+        function displayRecommendations(recommendations) {
+            if (recommendations.length === 0) {
+                recommendationsContainer.innerHTML = '<p style="text-align: center; color: #666; padding: 20px;">No recommendations found. Try a different keyword or context.</p>';
+                return;
+            }
+            
+            recommendationsContainer.innerHTML = recommendations.map((rec, index) => `
+                <div class="recommendation-item">
+                    <div class="recommendation-header">
+                        <span class="keyword-name">${rec.keyword}</span>
+                        <span class="confidence-score">${(rec.confidence * 100).toFixed(1)}%</span>
+                    </div>
+                    <div class="recommendation-details">
+                        <span><strong>Library:</strong> ${rec.library}</span>
+                        <span><strong>Usage Count:</strong> ${rec.usage_count}</span>
+                    </div>
+                    ${rec.next_keywords && rec.next_keywords.length > 0 ? `
+                        <div style="margin-top: 10px;">
+                            <strong style="font-size: 0.9em;">Commonly followed by:</strong>
+                            <div class="context-keywords">
+                                ${rec.next_keywords.map(kw => `<span class="context-tag">${kw}</span>`).join('')}
+                            </div>
+                        </div>
+                    ` : ''}
+                </div>
+            `).join('');
+        }
+        
+        function showError(message) {
+            errorContainer.innerHTML = `<div class="error">${message}</div>`;
+        }
+        
+        // Allow Enter key to trigger recommendations
+        keywordInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                getRecommendations();
+            }
+        });
+    </script>
+</body>
+</html>
