@@ -29,10 +29,10 @@ def initialize_recommender():
         print("No existing model found. Training on available data...")
         recommender = RobotKeywordRecommender()
         
-        # Look for output.xml and log.html files in current directory
+        # Look for output.xml files in current directory
         output_files = []
         for file in os.listdir('.'):
-            if file.endswith('output.xml') or file.endswith('log.html'):
+            if file.endswith('output.xml'):
                 output_files.append(file)
         
         if output_files:

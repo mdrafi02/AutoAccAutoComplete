@@ -2,54 +2,24 @@
 """
 Robot Framework Keyword Extractor
 
-This script reads Robot Framework output.xml or log.html files and lists all keywords
+This script reads a Robot Framework output.xml file and lists all keywords
 used in the order of execution, including their hierarchy and timing information.
 """
 
 import xml.etree.ElementTree as ET
 import sys
 import argparse
-import os
 from datetime import datetime
 from typing import List, Dict, Any
 
-# Import log.html parser if available
-try:
-    from log_html_parser import LogHTMLExtractor
-    LOG_HTML_SUPPORT = True
-except ImportError:
-    LOG_HTML_SUPPORT = False
-
 
 class RobotKeywordExtractor:
-    """Extracts and processes keywords from Robot Framework output.xml or log.html files."""
+    """Extracts and processes keywords from Robot Framework output.xml files."""
     
     def __init__(self, output_file: str):
-        """Initialize the extractor with the output.xml or log.html file path."""
+        """Initialize the extractor with the output.xml file path."""
         self.output_file = output_file
         self.keywords = []
-        self.file_type = self._detect_file_type()
-        self.html_extractor = None
-    
-    def _detect_file_type(self) -> str:
-        """Detect whether the file is XML or HTML."""
-        file_lower = self.output_file.lower()
-        if file_lower.endswith('.html') or file_lower.endswith('.htm'):
-            return 'html'
-        elif file_lower.endswith('.xml'):
-            return 'xml'
-        else:
-            # Try to detect by reading first few bytes
-            try:
-                with open(self.output_file, 'rb') as f:
-                    first_bytes = f.read(100).decode('utf-8', errors='ignore')
-                    if first_bytes.strip().startswith('<?xml') or '<robot' in first_bytes:
-                        return 'xml'
-                    elif '<html' in first_bytes.lower() or '<!doctype html' in first_bytes.lower():
-                        return 'html'
-            except:
-                pass
-            return 'xml'  # Default to XML
         
     def parse_xml(self) -> ET.Element:
         """Parse the XML file and return the root element."""
@@ -141,28 +111,7 @@ class RobotKeywordExtractor:
                 self.extract_keywords_recursive(child, level, parent_name, test_name)
     
     def extract_keywords(self) -> List[Dict[str, Any]]:
-        """Extract all keywords from the output.xml or log.html file."""
-        if self.file_type == 'html':
-            return self.extract_keywords_from_html()
-        else:
-            return self.extract_keywords_from_xml()
-    
-    def extract_keywords_from_html(self) -> List[Dict[str, Any]]:
-        """Extract keywords from log.html file."""
-        if not LOG_HTML_SUPPORT:
-            print("Error: log.html support not available. Please ensure log_html_parser.py is present.")
-            sys.exit(1)
-        
-        try:
-            self.html_extractor = LogHTMLExtractor(self.output_file)
-            self.keywords = self.html_extractor.extract_keywords()
-            return self.keywords
-        except Exception as e:
-            print(f"Error extracting from log.html: {e}")
-            sys.exit(1)
-    
-    def extract_keywords_from_xml(self) -> List[Dict[str, Any]]:
-        """Extract keywords from output.xml file."""
+        """Extract all keywords from the output.xml file."""
         root = self.parse_xml()
         
         # Check if root is robot element or find robot element
@@ -241,11 +190,11 @@ class RobotKeywordExtractor:
 def main():
     """Main function to run the keyword extractor."""
     parser = argparse.ArgumentParser(
-        description="Extract Robot Framework keywords from output.xml or log.html in execution order"
+        description="Extract Robot Framework keywords from output.xml in execution order"
     )
     parser.add_argument(
         'output_file',
-        help='Path to the Robot Framework output.xml or log.html file'
+        help='Path to the Robot Framework output.xml file'
     )
     parser.add_argument(
         '-d', '--details',
