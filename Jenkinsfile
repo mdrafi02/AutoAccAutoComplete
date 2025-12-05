@@ -29,15 +29,6 @@ pipeline {
         NOTIFICATION_EMAIL = "your-email@example.com"
     }
     
-    options {
-        // Keep last 10 builds
-        buildDiscarder(logRotator(numToKeepStr: '10'))
-        // Timeout after 2 hours
-        timeout(time: 2, unit: 'HOURS')
-        // Retry once on failure
-        retry(1)
-    }
-    
     stages {
         stage('Checkout') {
             steps {
@@ -74,21 +65,6 @@ pipeline {
                     sh """
                         ${PYTHON} -m pytest tests/ -v --cov=. --cov-report=html --cov-report=xml --cov-report=term || true
                     """
-                }
-            }
-            post {
-                always {
-                    // Publish test results
-                    publishHTML([
-                        reportDir: 'htmlcov',
-                        reportFiles: 'index.html',
-                        reportName: 'Coverage Report',
-                        keepAll: true
-                    ])
-                    // Publish coverage XML if available
-                    publishCoverage adapters: [
-                        coberturaAdapter('coverage.xml')
-                    ], sourceFileResolver: sourceFiles('STORE_LAST_BUILD')
                 }
             }
         }
@@ -181,38 +157,11 @@ pipeline {
                         
                         // Archive model artifacts
                         archiveArtifacts artifacts: "${MODEL_DIR}/${MODEL_NAME}_v${MODEL_VERSION}_${MODEL_TIMESTAMP}.keras, ${MODEL_DIR}/${TOKENIZER_NAME}_v${MODEL_VERSION}_${MODEL_TIMESTAMP}.json", allowEmptyArchive: false
-                        
-                        // Send success notification
-                        emailext(
-                            subject: "✅ Model Training Successful - Build #${env.BUILD_NUMBER}",
-                            body: """
-                                <h2>Model Training Completed Successfully</h2>
-                                <p><strong>Build Number:</strong> ${env.BUILD_NUMBER}</p>
-                                <p><strong>Model Version:</strong> v${MODEL_VERSION}</p>
-                                <p><strong>Timestamp:</strong> ${MODEL_TIMESTAMP}</p>
-                                <p><strong>Model Path:</strong> ${MODEL_DIR}/${MODEL_NAME}_v${MODEL_VERSION}_${MODEL_TIMESTAMP}.keras</p>
-                                <p><a href="${env.BUILD_URL}">View Build</a></p>
-                            """,
-                            to: "${NOTIFICATION_EMAIL}",
-                            mimeType: 'text/html'
-                        )
                     }
                 }
                 failure {
                     script {
                         echo "❌ Training failed!"
-                        // Send failure notification
-                        emailext(
-                            subject: "❌ Model Training Failed - Build #${env.BUILD_NUMBER}",
-                            body: """
-                                <h2>Model Training Failed</h2>
-                                <p><strong>Build Number:</strong> ${env.BUILD_NUMBER}</p>
-                                <p><strong>Error:</strong> Please check the build logs for details.</p>
-                                <p><a href="${env.BUILD_URL}">View Build</a></p>
-                            """,
-                            to: "${NOTIFICATION_EMAIL}",
-                            mimeType: 'text/html'
-                        )
                     }
                 }
             }
@@ -288,10 +237,8 @@ pipeline {
     
     post {
         always {
-            // Clean up
             script {
                 echo "🧹 Cleaning up..."
-                // Keep workspace clean
             }
         }
         success {
