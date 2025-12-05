@@ -24,7 +24,6 @@ pipeline {
         
         // Versioning
         MODEL_VERSION = "${env.BUILD_NUMBER}"
-        MODEL_TIMESTAMP = "${new Date().format('yyyyMMdd_HHmmss')}"
         
         // Notification (configure your email/Slack webhook)
         NOTIFICATION_EMAIL = "your-email@example.com"
@@ -50,6 +49,12 @@ pipeline {
         stage('Setup Environment') {
             steps {
                 script {
+                    // Set timestamp for model versioning
+                    env.MODEL_TIMESTAMP = sh(
+                        script: "date +'%Y%m%d_%H%M%S'",
+                        returnStdout: true
+                    ).trim()
+                    
                     echo "🔧 Setting up Python virtual environment..."
                     sh """
                         python3 -m venv ${VENV_PATH} || true
