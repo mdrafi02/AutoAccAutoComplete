@@ -1,0 +1,49 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+dist/
+build/
+
+# Virtual Environment
+venv/
+env/
+ENV/
+AutoSuggestionEnv/
+
+# Model files (large binary files)
+*.keras
+*.h5
+*.pb
+*.pkl
+*.joblib
+
+# TensorFlow.js generated files
+tfjs_model/
+*.json.bak
+
+# Dataset files (large JSON files - uncomment if you don't want to commit them)
+# keyword_dataset*.json
+# test_output.json
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Temporary files
+*.tmp
+*.bak
+
