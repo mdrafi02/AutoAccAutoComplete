@@ -164,18 +164,15 @@ pipeline {
                     script {
                         echo "✅ Training completed successfully!"
                         // Verify files exist before archiving
-                        String modelFile = "${MODEL_DIR}/${MODEL_NAME}_v${MODEL_VERSION}_${MODEL_TIMESTAMP}.keras"
-                        String tokenizerFile = "${MODEL_DIR}/${TOKENIZER_NAME}_v${MODEL_VERSION}_${MODEL_TIMESTAMP}.json"
-                        
-                        if (!fileExists(modelFile)) {
-                            error("Model file not found: ${modelFile}")
+                        if (!fileExists("${MODEL_DIR}/${MODEL_NAME}_v${MODEL_VERSION}_${MODEL_TIMESTAMP}.keras")) {
+                            error("Model file not found: ${MODEL_DIR}/${MODEL_NAME}_v${MODEL_VERSION}_${MODEL_TIMESTAMP}.keras")
                         }
-                        if (!fileExists(tokenizerFile)) {
-                            error("Tokenizer file not found: ${tokenizerFile}")
+                        if (!fileExists("${MODEL_DIR}/${TOKENIZER_NAME}_v${MODEL_VERSION}_${MODEL_TIMESTAMP}.json")) {
+                            error("Tokenizer file not found: ${MODEL_DIR}/${TOKENIZER_NAME}_v${MODEL_VERSION}_${MODEL_TIMESTAMP}.json")
                         }
                         
                         // Archive model artifacts
-                        archiveArtifacts artifacts: "${modelFile}, ${tokenizerFile}", allowEmptyArchive: false
+                        archiveArtifacts artifacts: "${MODEL_DIR}/${MODEL_NAME}_v${MODEL_VERSION}_${MODEL_TIMESTAMP}.keras, ${MODEL_DIR}/${TOKENIZER_NAME}_v${MODEL_VERSION}_${MODEL_TIMESTAMP}.json", allowEmptyArchive: false
                         
                         // Send success notification
                         emailext(
@@ -226,21 +223,18 @@ pipeline {
                     echo "🔄 Converting model to TensorFlow.js format..."
                     
                     // Verify required files exist before conversion
-                    String modelFile = "${MODEL_DIR}/${MODEL_NAME}_latest.keras"
-                    String tokenizerFile = "${MODEL_DIR}/${TOKENIZER_NAME}_latest.json"
-                    
-                    if (!fileExists(modelFile)) {
-                        error("Cannot convert: Model file not found: " + modelFile + ". Training may have failed.")
+                    if (!fileExists("${MODEL_DIR}/${MODEL_NAME}_latest.keras")) {
+                        error("Cannot convert: Model file not found: ${MODEL_DIR}/${MODEL_NAME}_latest.keras. Training may have failed.")
                     }
-                    if (!fileExists(tokenizerFile)) {
-                        error("Cannot convert: Tokenizer file not found: " + tokenizerFile + ". Training may have failed.")
+                    if (!fileExists("${MODEL_DIR}/${TOKENIZER_NAME}_latest.json")) {
+                        error("Cannot convert: Tokenizer file not found: ${MODEL_DIR}/${TOKENIZER_NAME}_latest.json. Training may have failed.")
                     }
                     
                     sh """
                         ${PIP} install tensorflowjs || true
                         ${PYTHON} convert_to_tfjs.py \
-                            --model ${modelFile} \
-                            --tokenizer ${tokenizerFile} \
+                            --model ${MODEL_DIR}/${MODEL_NAME}_latest.keras \
+                            --tokenizer ${MODEL_DIR}/${TOKENIZER_NAME}_latest.json \
                             --output ${WORKSPACE}/tfjs_model \
                             --tokenizer-output ${WORKSPACE}/tfjs_model/tokenizer_js.json
                     """
