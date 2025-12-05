@@ -69,13 +69,18 @@ node {
                 sh "mkdir -p ${env.MODEL_DIR}"
                 
                 // Check if XML data exists
-                sh """
-                    if [ ! -d "${env.XML_FOLDER}" ] || [ -z "\$(ls -A ${env.XML_FOLDER} 2>/dev/null)" ]; then
-                        echo "⚠️  WARNING: XML folder is empty or doesn't exist: ${env.XML_FOLDER}"
-                        echo "⚠️  Training will be skipped. Please configure XML_FOLDER environment variable."
-                        exit 1
-                    fi
-                """
+                def xmlFolderExists = sh(
+                    script: "test -d '${env.XML_FOLDER}' && test -n \"\$(ls -A '${env.XML_FOLDER}' 2>/dev/null)\"",
+                    returnStatus: true
+                ) == 0
+                
+                if (!xmlFolderExists) {
+                    echo "⚠️  WARNING: XML folder is empty or doesn't exist: ${env.XML_FOLDER}"
+                    echo "⚠️  Training will be skipped. Please configure XML_FOLDER environment variable."
+                    echo "ℹ️  To configure: Set XML_FOLDER environment variable in Jenkins job configuration"
+                    currentBuild.result = 'UNSTABLE'
+                    return
+                }
                 
                 // Run full training pipeline
                 sh """
