@@ -1,6 +1,11 @@
 pipeline {
     agent any
     
+    parameters {
+        booleanParam(name: 'RUN_TRAINING', defaultValue: false, description: 'Run model training pipeline')
+        booleanParam(name: 'DEPLOY_MODEL', defaultValue: false, description: 'Deploy model to production')
+    }
+    
     environment {
         // Python virtual environment
         VENV_PATH = "${WORKSPACE}/venv"
