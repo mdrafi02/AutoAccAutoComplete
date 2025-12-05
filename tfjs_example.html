@@ -228,11 +228,11 @@
             }
         }
 
-        function displayPredictions(predictions, depth, level = 0) {
-            const predictionsDiv = document.getElementById('predictions');
-            
-            if (level === 0) {
-                predictionsDiv.innerHTML = '<h2>Predictions:</h2>';
+        function displayPredictions(predictions, depth, level = 0, container = null) {
+            // Get or create container
+            if (container === null) {
+                container = document.getElementById('predictions');
+                container.innerHTML = '<h2>Predictions:</h2>';
             }
 
             predictions.forEach((pred, idx) => {
@@ -253,17 +253,18 @@
                     </div>
                 `;
 
+                // Handle nested predictions recursively
                 if (pred.next_predictions && pred.next_predictions.length > 0) {
                     const nested = document.createElement('div');
                     nested.className = 'nested-predictions';
-                    nested.innerHTML = displayPredictions(pred.next_predictions, depth, level + 1);
+                    // Recursively call with nested container
+                    displayPredictions(pred.next_predictions, depth, level + 1, nested);
                     item.appendChild(nested);
                 }
 
-                predictionsDiv.appendChild(item);
+                // Append to the provided container (not always the global one)
+                container.appendChild(item);
             });
-
-            return '';
         }
 
         // Auto-load model on page load

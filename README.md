@@ -310,6 +310,67 @@ const result = await predictNextKeywords(
 console.log(result.predictions);
 ```
 
+## 🧪 Testing
+
+The project includes comprehensive unit tests for all major components.
+
+### Running Tests
+
+```bash
+# Install test dependencies
+pip install -r requirements_test.txt
+
+# Run all tests
+pytest
+
+# Run with coverage
+pytest --cov=. --cov-report=html
+
+# Run specific test file
+pytest tests/test_prediction.py
+```
+
+### Test Coverage
+
+- **Prediction Functions**: `predict_next_keyword`, `predict_next_keyword_with_depth`
+- **Keyword Extraction**: `extract_keywords_from_output`, `normalize_keyword`
+- **API Endpoints**: All FastAPI endpoints with model loading
+- **Model Loading**: Model and tokenizer loading functionality
+
+See [TESTING.md](TESTING.md) for detailed testing documentation.
+
+## 🔄 CI/CD Pipeline
+
+The project includes a Jenkins pipeline for automated testing and weekly model training.
+
+### Features
+
+- **Automated Testing**: Runs unit tests on every commit/PR
+- **Weekly Training**: Automatically trains model once a week (configurable)
+- **Model Versioning**: Tracks model versions with timestamps
+- **Code Quality**: Runs linting and formatting checks
+- **TensorFlow.js Conversion**: Converts models for frontend use
+- **Notifications**: Email notifications on success/failure
+
+### Quick Setup
+
+1. **Install Jenkins plugins**: Pipeline, HTML Publisher, Coverage, Email Extension
+2. **Create pipeline job**: Use `Jenkinsfile` from repository
+3. **Configure environment**: Set `XML_FOLDER` and `NOTIFICATION_EMAIL`
+4. **Set schedule**: Configure weekly training (default: Sunday 2 AM)
+
+See [JENKINS_SETUP.md](JENKINS_SETUP.md) for complete setup instructions.
+
+### Pipeline Stages
+
+1. **Checkout**: Get code from repository
+2. **Setup Environment**: Create virtual environment and install dependencies
+3. **Run Tests**: Execute unit tests with coverage
+4. **Code Quality**: Run linting and formatting checks
+5. **Weekly Training** (conditional): Extract, clean, train, and version model
+6. **Convert to TensorFlow.js** (conditional): Convert model for frontend
+7. **Deploy Model** (conditional): Deploy to production
+
 ## 🐛 Troubleshooting
 
 ### Common Issues
@@ -331,6 +392,9 @@ console.log(result.predictions);
 - [INCREMENTAL_UPDATE_GUIDE.md](INCREMENTAL_UPDATE_GUIDE.md) - Incremental learning guide
 - [LSTM_EXPLANATION.md](LSTM_EXPLANATION.md) - Technical model explanation
 - [NAMING_CONVENTIONS.md](NAMING_CONVENTIONS.md) - Code style guide
+- [TESTING.md](TESTING.md) - Testing guide and best practices
+- [JENKINS_SETUP.md](JENKINS_SETUP.md) - Jenkins CI/CD pipeline setup
+- [TENSORFLOW_JS_GUIDE.md](TENSORFLOW_JS_GUIDE.md) - Frontend integration guide
 
 ## 📄 License
 
