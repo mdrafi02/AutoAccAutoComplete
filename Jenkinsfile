@@ -164,8 +164,8 @@ pipeline {
                     script {
                         echo "✅ Training completed successfully!"
                         // Verify files exist before archiving
-                        def modelFile = "${MODEL_DIR}/${MODEL_NAME}_v${MODEL_VERSION}_${MODEL_TIMESTAMP}.keras"
-                        def tokenizerFile = "${MODEL_DIR}/${TOKENIZER_NAME}_v${MODEL_VERSION}_${MODEL_TIMESTAMP}.json"
+                        String modelFile = "${MODEL_DIR}/${MODEL_NAME}_v${MODEL_VERSION}_${MODEL_TIMESTAMP}.keras"
+                        String tokenizerFile = "${MODEL_DIR}/${TOKENIZER_NAME}_v${MODEL_VERSION}_${MODEL_TIMESTAMP}.json"
                         
                         if (!fileExists(modelFile)) {
                             error("Model file not found: ${modelFile}")
@@ -226,14 +226,14 @@ pipeline {
                     echo "🔄 Converting model to TensorFlow.js format..."
                     
                     // Verify required files exist before conversion
-                    def modelFile = "${MODEL_DIR}/${MODEL_NAME}_latest.keras"
-                    def tokenizerFile = "${MODEL_DIR}/${TOKENIZER_NAME}_latest.json"
+                    String modelFile = "${MODEL_DIR}/${MODEL_NAME}_latest.keras"
+                    String tokenizerFile = "${MODEL_DIR}/${TOKENIZER_NAME}_latest.json"
                     
                     if (!fileExists(modelFile)) {
-                        error("Cannot convert: Model file not found: ${modelFile}. Training may have failed.")
+                        error("Cannot convert: Model file not found: " + modelFile + ". Training may have failed.")
                     }
                     if (!fileExists(tokenizerFile)) {
-                        error("Cannot convert: Tokenizer file not found: ${tokenizerFile}. Training may have failed.")
+                        error("Cannot convert: Tokenizer file not found: " + tokenizerFile + ". Training may have failed.")
                     }
                     
                     sh """
