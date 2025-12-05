@@ -134,12 +134,28 @@ pipeline {
                         ${PYTHON} inspect_keyword_dataset.py --input ${CLEANED_DATASET} || true
                         
                         echo "🏋️  Step 4: Training model..."
-                        ${PYTHON} train_keyword_predictor.py --input ${CLEANED_DATASET} --output ${MODEL_DIR}/${MODEL_NAME}_v${MODEL_VERSION}_${MODEL_TIMESTAMP}.keras
+                        TOKENIZER_OUTPUT="${WORKSPACE}/tokenizer.json"
+                        ${PYTHON} train_keyword_predictor.py \
+                            --input ${CLEANED_DATASET} \
+                            --output ${MODEL_DIR}/${MODEL_NAME}_v${MODEL_VERSION}_${MODEL_TIMESTAMP}.keras \
+                            --tokenizer-output ${TOKENIZER_OUTPUT}
                         
                         echo "📦 Step 5: Copying model and tokenizer to latest..."
-                        cp ${MODEL_DIR}/${MODEL_NAME}_v${MODEL_VERSION}_${MODEL_TIMESTAMP}.keras ${MODEL_DIR}/${MODEL_NAME}_latest.keras || true
-                        cp tokenizer.json ${MODEL_DIR}/${TOKENIZER_NAME}_latest.json || true
-                        cp tokenizer.json ${MODEL_DIR}/${TOKENIZER_NAME}_v${MODEL_VERSION}_${MODEL_TIMESTAMP}.json || true
+                        # Verify model file exists
+                        if [ ! -f "${MODEL_DIR}/${MODEL_NAME}_v${MODEL_VERSION}_${MODEL_TIMESTAMP}.keras" ]; then
+                            echo "❌ ERROR: Model file not found after training!"
+                            exit 1
+                        fi
+                        
+                        # Verify tokenizer file exists
+                        if [ ! -f "${TOKENIZER_OUTPUT}" ]; then
+                            echo "❌ ERROR: Tokenizer file not found after training: ${TOKENIZER_OUTPUT}"
+                            exit 1
+                        fi
+                        
+                        cp ${MODEL_DIR}/${MODEL_NAME}_v${MODEL_VERSION}_${MODEL_TIMESTAMP}.keras ${MODEL_DIR}/${MODEL_NAME}_latest.keras
+                        cp ${TOKENIZER_OUTPUT} ${MODEL_DIR}/${TOKENIZER_NAME}_latest.json
+                        cp ${TOKENIZER_OUTPUT} ${MODEL_DIR}/${TOKENIZER_NAME}_v${MODEL_VERSION}_${MODEL_TIMESTAMP}.json
                     """
                 }
             }
@@ -147,8 +163,19 @@ pipeline {
                 success {
                     script {
                         echo "✅ Training completed successfully!"
+                        // Verify files exist before archiving
+                        def modelFile = "${MODEL_DIR}/${MODEL_NAME}_v${MODEL_VERSION}_${MODEL_TIMESTAMP}.keras"
+                        def tokenizerFile = "${MODEL_DIR}/${TOKENIZER_NAME}_v${MODEL_VERSION}_${MODEL_TIMESTAMP}.json"
+                        
+                        if (!fileExists(modelFile)) {
+                            error("Model file not found: ${modelFile}")
+                        }
+                        if (!fileExists(tokenizerFile)) {
+                            error("Tokenizer file not found: ${tokenizerFile}")
+                        }
+                        
                         // Archive model artifacts
-                        archiveArtifacts artifacts: "${MODEL_DIR}/${MODEL_NAME}_v${MODEL_VERSION}_${MODEL_TIMESTAMP}.keras, ${MODEL_DIR}/${TOKENIZER_NAME}_v${MODEL_VERSION}_${MODEL_TIMESTAMP}.json", allowEmptyArchive: false
+                        archiveArtifacts artifacts: "${modelFile}, ${tokenizerFile}", allowEmptyArchive: false
                         
                         // Send success notification
                         emailext(
@@ -188,7 +215,7 @@ pipeline {
         
         stage('Convert to TensorFlow.js') {
             when {
-                // Only run if training was successful
+                // Only run if training was triggered
                 anyOf {
                     expression { params.RUN_TRAINING == true }
                     expression { env.BUILD_CAUSE == 'TIMERTRIGGER' }
@@ -197,12 +224,25 @@ pipeline {
             steps {
                 script {
                     echo "🔄 Converting model to TensorFlow.js format..."
+                    
+                    // Verify required files exist before conversion
+                    def modelFile = "${MODEL_DIR}/${MODEL_NAME}_latest.keras"
+                    def tokenizerFile = "${MODEL_DIR}/${TOKENIZER_NAME}_latest.json"
+                    
+                    if (!fileExists(modelFile)) {
+                        error("Cannot convert: Model file not found: ${modelFile}. Training may have failed.")
+                    }
+                    if (!fileExists(tokenizerFile)) {
+                        error("Cannot convert: Tokenizer file not found: ${tokenizerFile}. Training may have failed.")
+                    }
+                    
                     sh """
                         ${PIP} install tensorflowjs || true
                         ${PYTHON} convert_to_tfjs.py \
-                            --model ${MODEL_DIR}/${MODEL_NAME}_latest.keras \
-                            --tokenizer ${MODEL_DIR}/${TOKENIZER_NAME}_latest.json \
-                            --output ${WORKSPACE}/tfjs_model
+                            --model ${modelFile} \
+                            --tokenizer ${tokenizerFile} \
+                            --output ${WORKSPACE}/tfjs_model \
+                            --tokenizer-output ${WORKSPACE}/tfjs_model/tokenizer_js.json
                     """
                 }
             }
@@ -263,4 +303,3 @@ pipeline {
         }
     }
 }
-

@@ -20,10 +20,20 @@ def client_with_model(mock_model, sample_tokenizer, temp_model_file, temp_tokeni
     # Import here to avoid circular imports
     import api_keyword_predictor
     
+    # Save original state (if any)
+    original_model = getattr(api_keyword_predictor, 'model', None)
+    original_tokenizer = getattr(api_keyword_predictor, 'tokenizer', None)
+    original_context_size = getattr(api_keyword_predictor, 'context_size', None)
+    
     # Load the model into the API's global variables using the API's load_model function
     api_keyword_predictor.load_model(temp_model_file, temp_tokenizer_file)
     
-    return TestClient(app)
+    yield TestClient(app)
+    
+    # Cleanup: Reset global state after test
+    api_keyword_predictor.model = original_model
+    api_keyword_predictor.tokenizer = original_tokenizer
+    api_keyword_predictor.context_size = original_context_size
 
 
 class TestHealthEndpoints:
