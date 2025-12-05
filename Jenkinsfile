@@ -42,10 +42,8 @@ pipeline {
     stages {
         stage('Checkout') {
             steps {
-                script {
-                    echo "📦 Checking out code from ${env.GIT_BRANCH}"
-                    checkout scm
-                }
+                echo "📦 Checking out code from ${env.GIT_BRANCH}"
+                checkout scm
             }
         }
         
