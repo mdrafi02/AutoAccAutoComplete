@@ -14,7 +14,8 @@ node {
     env.MODEL_DIR = "${WORKSPACE}/models"
     env.MODEL_NAME = "keyword_predictor"
     env.TOKENIZER_NAME = "tokenizer"
-    env.XML_FOLDER = "${WORKSPACE}/data/xml_files"
+    // Use parameter if provided, otherwise default to workspace/data/xml_files
+    env.XML_FOLDER = params.XML_FOLDER_PATH ?: "${WORKSPACE}/data/xml_files"
     env.DATASET_OUTPUT = "${WORKSPACE}/keyword_dataset.json"
     env.CLEANED_DATASET = "${WORKSPACE}/keyword_dataset_cleaned.json"
     env.MODEL_VERSION = "${env.BUILD_NUMBER}"
@@ -73,8 +74,9 @@ node {
                 sh """
                     if [ ! -d "${env.XML_FOLDER}" ] || [ -z "\$(ls -A ${env.XML_FOLDER} 2>/dev/null)" ]; then
                         echo "⚠️  WARNING: XML folder is empty or doesn't exist: ${env.XML_FOLDER}"
-                        echo "⚠️  Training will be skipped. Please configure XML_FOLDER environment variable."
-                        echo "ℹ️  To configure: Set XML_FOLDER environment variable in Jenkins job configuration"
+                        echo "⚠️  Training will be skipped."
+                        echo "ℹ️  To configure: Provide XML_FOLDER_PATH build parameter (e.g., /path/to/xml_files)"
+                        echo "ℹ️  Or set it as an environment variable in Jenkins job configuration"
                         exit 0
                     fi
                 """
