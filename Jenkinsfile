@@ -51,8 +51,11 @@ node {
     stage('Code Quality') {
         echo "🔍 Running code quality checks..."
         sh """
-            ${env.PYTHON} -m flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics || true
-            ${env.PYTHON} -m black --check . || true
+            # Exclude venv, node_modules, and other directories from linting
+            ${env.PYTHON} -m flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics \
+                --exclude=venv,env,.venv,node_modules,build,dist,*.egg-info || true
+            # Check code formatting (exclude venv and other generated directories)
+            ${env.PYTHON} -m black --check . --exclude='/(venv|env|\\.venv|node_modules|build|dist|\\.git|\\.eggs|\\.mypy_cache|\\.pytest_cache|\\.tox)/' || true
         """
     }
     
