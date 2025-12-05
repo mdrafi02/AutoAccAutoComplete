@@ -1,7 +1,8 @@
 properties([
     parameters([
         booleanParam(name: 'RUN_TRAINING', defaultValue: false, description: 'Run model training pipeline'),
-        booleanParam(name: 'DEPLOY_MODEL', defaultValue: false, description: 'Deploy model to production')
+        booleanParam(name: 'DEPLOY_MODEL', defaultValue: false, description: 'Deploy model to production'),
+        stringParam(name: 'XML_FOLDER_PATH', defaultValue: '', description: 'Path to XML files folder (e.g., /path/to/xml_files or relative to workspace)')
     ])
 ])
 
