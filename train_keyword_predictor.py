@@ -270,14 +270,13 @@ def train_model(
     # Add checkpointing
     if model_save_path:
         checkpoint_path = model_save_path.replace(".keras", "_best.keras")
-        # Ensure checkpoint uses .keras extension and native Keras format
+        # Ensure checkpoint uses .keras extension (ModelCheckpoint uses format based on extension)
         if not checkpoint_path.endswith(".keras"):
             checkpoint_path = checkpoint_path + ".keras"
         checkpoint = ModelCheckpoint(
             checkpoint_path,
             monitor="val_loss" if X_val is not None else "loss",
             save_best_only=True,
-            save_format="keras",  # Explicitly use Keras format, not HDF5
             verbose=1,
         )
         callbacks.append(checkpoint)
