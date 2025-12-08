@@ -378,7 +378,15 @@ def train_model(
     # Save in native Keras format - use model.save() with explicit format
     # The save_format="keras" parameter ensures native Keras format (not HDF5)
     # This avoids HDF5 deprecation warnings
+    print(f"   Saving model to {model_save_path} with save_format='keras'...")
     model.save(model_save_path, save_format="keras")
+
+    # Verify the file was created and check its size
+    if os.path.exists(model_save_path):
+        file_size = os.path.getsize(model_save_path)
+        print(f"   Model file saved: {file_size:,} bytes")
+    else:
+        print(f"   ⚠️  WARNING: Model file was not created!")
 
     with open(tokenizer_save_path, "w", encoding="utf-8") as f:
         f.write(tokenizer.to_json())

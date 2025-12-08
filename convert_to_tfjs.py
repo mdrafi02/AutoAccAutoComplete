@@ -15,22 +15,10 @@ import warnings
 # Set TensorFlow log level (keep warnings for debugging)
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "1"  # Only show WARNING and ERROR
 
-# Suppress harmless warnings
+# Suppress the harmless TensorFlow.js keras version lookup warning
 warnings.filterwarnings(
     "ignore", message=".*failed to lookup keras version.*", category=UserWarning
 )
-# Suppress HDF5 deprecation warning when loading old model files
-# This warning appears when loading models saved in HDF5 format before our fixes.
-# The warning will disappear once a new model is trained with the updated code.
-warnings.filterwarnings(
-    "ignore",
-    message=".*You are saving your model as an HDF5 file.*",
-    category=UserWarning,
-)
-# Also suppress absl logging warnings (TensorFlow uses absl for logging)
-import logging
-
-logging.getLogger("absl").setLevel(logging.ERROR)
 
 import tensorflow as tf
 from tensorflow.keras.preprocessing.text import tokenizer_from_json
@@ -52,11 +40,17 @@ def convert_model_to_tfjs(model_path, output_dir, tfjs_module):
     trained with the updated code that saves in native Keras format.
     """
     print(f"Loading model from {model_path}...")
+    # Check if file exists and get its size
+    if os.path.exists(model_path):
+        file_size = os.path.getsize(model_path)
+        print(f"   Model file size: {file_size:,} bytes")
+
     # Load model - if it's an old HDF5 format model (despite .keras extension),
     # TensorFlow will show a deprecation warning, but it will still load correctly.
     # The 'failed to lookup keras version' warning is also harmless.
     # These warnings will disappear once a new model is trained with the updated code.
     model = tf.keras.models.load_model(model_path)
+    print(f"   Model loaded successfully")
 
     print(f"Converting model to TensorFlow.js format...")
     print(f"Output directory: {output_dir}")
