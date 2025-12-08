@@ -3,22 +3,17 @@ import numpy as np
 import ijson
 import argparse
 import os
-import warnings
 from math import ceil
 
 # Set TensorFlow log level to reduce verbose output (keep warnings for important issues)
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "1"  # Only show WARNING and ERROR
-
-# Suppress TensorFlow Decision Forests YDF advertisement message
-# (We use LSTM, not decision forests, so this message is not relevant)
-warnings.filterwarnings("ignore", message=".*Try https://ydf.readthedocs.io.*")
 
 import tensorflow as tf
 from tensorflow.keras.preprocessing.text import Tokenizer, tokenizer_from_json
 from tensorflow.keras.preprocessing.sequence import pad_sequences
 from tensorflow.keras.models import Sequential, load_model
 from tensorflow.keras.layers import Embedding, LSTM, Dense, Dropout
-from tensorflow.keras.callbacks import EarlyStopping, ModelCheckpoint
+from tensorflow.keras.callbacks import EarlyStopping, ModelCheckpoint, Callback
 from sklearn.model_selection import train_test_split
 
 
@@ -272,17 +267,45 @@ def train_model(
         )
     ]
 
-    # Add checkpointing
+    # Add checkpointing with custom callback to ensure Keras format (not HDF5)
     if model_save_path:
         checkpoint_path = model_save_path.replace(".keras", "_best.keras")
-        # Ensure checkpoint uses .keras extension (ModelCheckpoint uses format based on extension)
+        # Ensure checkpoint uses .keras extension
         if not checkpoint_path.endswith(".keras"):
             checkpoint_path = checkpoint_path + ".keras"
-        checkpoint = ModelCheckpoint(
+
+        # Custom checkpoint that explicitly saves in native Keras format
+        # This avoids the HDF5 deprecation warning from ModelCheckpoint
+        class KerasFormatCheckpoint(Callback):
+            """Custom checkpoint that saves in native Keras format."""
+
+            def __init__(self, filepath, monitor, save_best_only=True):
+                super().__init__()
+                self.filepath = filepath
+                self.monitor = monitor
+                self.save_best_only = save_best_only
+                self.best = float("inf")
+                self.verbose = 1
+
+            def on_epoch_end(self, epoch, logs=None):
+                logs = logs or {}
+                current = logs.get(self.monitor)
+                if current is None:
+                    return
+
+                if current < self.best:
+                    self.best = current
+                    # Save in native Keras format explicitly to avoid HDF5 warning
+                    self.model.save(self.filepath, save_format="keras")
+                    if self.verbose > 0:
+                        print(
+                            f"\nEpoch {epoch + 1}: {self.monitor} improved to {current:.4f}, saving model to {self.filepath}"
+                        )
+
+        checkpoint = KerasFormatCheckpoint(
             checkpoint_path,
             monitor="val_loss" if X_val is not None else "loss",
             save_best_only=True,
-            verbose=1,
         )
         callbacks.append(checkpoint)
 
