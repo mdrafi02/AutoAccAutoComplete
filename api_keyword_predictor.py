@@ -181,7 +181,12 @@ async def predict(request: PredictRequest):
 async def model_info():
     """Get model information."""
     if model is None:
-        raise HTTPException(status_code=503, detail="Model not loaded")
+        return {
+            "model_loaded": False,
+            "context_size": None,
+            "input_shape": None,
+            "vocab_size": None
+        }
     
     return {
         "context_size": context_size,

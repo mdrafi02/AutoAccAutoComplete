@@ -58,8 +58,21 @@ def predict_next_keyword(model, tokenizer, context_keywords, top_k=3):
         token_sequence = tokenizer.texts_to_sequences([context_keywords])[0]
         token_sequence = pad_sequences([token_sequence], maxlen=context_size, padding="pre")
         predictions = model.predict(token_sequence, verbose=0)[0]
-        top_indices = predictions.argsort()[-top_k:][::-1]
-        results = [(index_to_word.get(idx, "<OOV>"), float(predictions[idx])) for idx in top_indices]
+        
+        # Get top_k indices, excluding 0 (padding token) and invalid indices
+        # Create list of (index, probability) for valid indices only
+        valid_predictions = [
+            (idx, float(predictions[idx])) 
+            for idx in range(1, len(predictions))  # Skip 0 (padding)
+            if idx in index_to_word
+        ]
+        
+        # Sort by probability descending and take top_k
+        valid_predictions.sort(key=lambda x: x[1], reverse=True)
+        top_predictions = valid_predictions[:top_k]
+        
+        # Convert to (keyword, probability) tuples
+        results = [(index_to_word[idx], prob) for idx, prob in top_predictions]
         return results
     except Exception as e:
         raise RuntimeError(f"Error during prediction: {e}")

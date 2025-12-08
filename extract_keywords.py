@@ -1,5 +1,7 @@
 import json
 import argparse
+import re
+import os
 from pathlib import Path
 from xml.etree import ElementTree as ET
 
@@ -7,7 +9,8 @@ def normalize_keyword(keyword_name, library_name):
     """Normalize keyword name and create full keyword with library prefix."""
     if not keyword_name:
         return None
-    keyword_name = keyword_name.lower().strip().replace(" ", "_")
+    # Replace one or more whitespace characters with a single underscore
+    keyword_name = re.sub(r'\s+', '_', keyword_name.lower().strip())
     if library_name:
         library_name = library_name.lower().strip()
         full_keyword = f"{library_name}.{keyword_name}"
@@ -58,6 +61,10 @@ def extract_keywords_from_output(xml_path):
     test_setup_depth = 0
     test_teardown_depth = 0
 
+    # Check if file exists before parsing
+    if not os.path.exists(xml_path):
+        raise FileNotFoundError(f"XML file not found: {xml_path}")
+    
     try:
         # Use iterparse with optimized memory management
         for event, element in ET.iterparse(xml_path, events=("start", "end")):
@@ -302,6 +309,9 @@ def extract_keywords_from_output(xml_path):
         
         return test_data, metadata
 
+    except (FileNotFoundError, OSError):
+        # Re-raise file system errors so they can be caught by tests
+        raise
     except ET.ParseError as e:
         print(f"XML parsing error in {xml_path}: {e}")
         return [], {"has_suite_setup": False, "has_suite_teardown": False}
