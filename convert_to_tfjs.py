@@ -15,9 +15,17 @@ import warnings
 # Set TensorFlow log level (keep warnings for debugging)
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "1"  # Only show WARNING and ERROR
 
-# Suppress the harmless TensorFlow.js keras version lookup warning
+# Suppress harmless warnings
 warnings.filterwarnings(
     "ignore", message=".*failed to lookup keras version.*", category=UserWarning
+)
+# Suppress HDF5 deprecation warning when loading old model files
+# This warning appears when loading models saved in HDF5 format before our fixes.
+# The warning will disappear once a new model is trained with the updated code.
+warnings.filterwarnings(
+    "ignore",
+    message=".*You are saving your model as an HDF5 file.*",
+    category=UserWarning,
 )
 
 import tensorflow as tf
