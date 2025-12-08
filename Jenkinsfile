@@ -27,9 +27,13 @@ node {
     }
     
     stage('Setup Environment') {
-        // Set timestamp for model versioning (using Groovy to avoid command echo)
-        def now = new Date()
-        env.MODEL_TIMESTAMP = now.format('yyyyMMdd_HHmmss', TimeZone.getTimeZone('UTC'))
+        // Set timestamp for model versioning (sandbox-safe approach)
+        script {
+            env.MODEL_TIMESTAMP = sh(
+                script: 'date +%Y%m%d_%H%M%S',
+                returnStdout: true
+            ).trim()
+        }
         
         echo "🔧 Setting up Python virtual environment..."
         echo "   Model timestamp: ${env.MODEL_TIMESTAMP}"
