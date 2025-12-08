@@ -15,7 +15,7 @@ The project includes comprehensive unit tests covering:
 ### 1. Install Test Dependencies
 
 ```bash
-pip install -r requirements_test.txt
+pip install -r requirements.txt
 ```
 
 ### 2. Run All Tests
@@ -219,7 +219,7 @@ def test_file_operation(tmp_path):
 cd /path/to/robot_keyword_model2
 
 # Install dependencies
-pip install -r requirements_test.txt
+pip install -r requirements.txt
 ```
 
 ### Issue: Model Files Not Found

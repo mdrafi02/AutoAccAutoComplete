@@ -5,7 +5,11 @@
 ### 1. Install Dependencies
 
 ```bash
-pip install -r requirements_api.txt
+# Install all dependencies (recommended)
+pip install -r requirements.txt
+
+# Or install minimal dependencies for API only
+pip install -r requirements-minimal.txt
 ```
 
 ### 2. Start the API Server

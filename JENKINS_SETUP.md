@@ -120,7 +120,7 @@ workspace/
 
 ### 2. Setup Environment
 - Creates Python virtual environment
-- Installs dependencies from `requirements_api.txt` and `requirements_test.txt`
+- Installs dependencies from `requirements.txt` (consolidated file with all dependencies)
 
 ### 3. Run Tests
 - Runs pytest with coverage

@@ -16,8 +16,7 @@ An intelligent LSTM-based keyword prediction system for Robot Framework test aut
 ### Prerequisites
 
 - Python 3.7+
-- TensorFlow 2.x
-- Robot Framework XML files (for training)
+- Robot Framework XML files (for training, optional if you have a pre-trained model)
 
 ### Installation
 
@@ -28,22 +27,30 @@ cd robot_keyword_model2
 
 2. **Install dependencies:**
 ```bash
-# For API usage
-pip install -r requirements_api.txt
+# Install all dependencies (recommended - includes API, training, and testing tools)
+pip install -r requirements.txt
 
-# For training (if needed)
-pip install tensorflow numpy scikit-learn ijson
+# Or install minimal dependencies for API only (if you already have a trained model)
+pip install -r requirements-minimal.txt
 ```
 
-3. **Train a model (if you don't have one):**
+3. **Quick Test (if you have a trained model):**
 ```bash
-# Extract keywords from XML files
+# Start the API server
+python api_keyword_predictor.py
+
+# Or use the CLI
+python predict_keywords_siva.py
+```
+
+4. **Train a model (if you don't have one):**
+```bash
+# Option 1: Use the automated pipeline (recommended)
+python run_pipeline.py --xml-folder /path/to/xml/files
+
+# Option 2: Manual step-by-step
 python extract_keywords.py --folder /path/to/xml/files --output keyword_dataset.json
-
-# Clean the dataset
 python clean_keyword_dataset.py --input keyword_dataset.json --output keyword_dataset_cleaned.json
-
-# Train the model
 python train_keyword_predictor.py --input keyword_dataset_cleaned.json
 ```
 
@@ -205,7 +212,10 @@ robot_keyword_model2/
 ├── keyword_predictor.keras        # Trained model
 ├── tokenizer.json                 # Tokenizer for text processing
 │
-└── requirements_api.txt           # API dependencies
+├── requirements.txt              # All dependencies (recommended)
+├── requirements-minimal.txt     # Minimal dependencies (API only)
+├── requirements_api.txt         # API dependencies (legacy)
+└── requirements_test.txt        # Test dependencies (legacy)
 ```
 
 ## 🔄 Complete Pipeline
@@ -317,8 +327,8 @@ The project includes comprehensive unit tests for all major components.
 ### Running Tests
 
 ```bash
-# Install test dependencies
-pip install -r requirements_test.txt
+# Install dependencies (includes test tools)
+pip install -r requirements.txt
 
 # Run all tests
 pytest

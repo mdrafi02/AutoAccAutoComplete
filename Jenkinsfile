@@ -37,9 +37,7 @@ node {
         sh """
             python3 -m venv ${env.VENV_PATH} || true
             ${env.PIP} install --upgrade pip setuptools wheel
-            ${env.PIP} install -r requirements_api.txt
-            ${env.PIP} install -r requirements_test.txt || true
-            ${env.PIP} install tensorflow numpy scikit-learn ijson
+            ${env.PIP} install -r requirements.txt
         """
     }
     
@@ -70,34 +68,44 @@ node {
                 // Create models directory
                 sh "mkdir -p ${env.MODEL_DIR}"
                 
-                // Check if XML data exists - skip gracefully if not available
+                // Check if XML data exists - fail stage if not available
                 sh """
                     if [ ! -d "${env.XML_FOLDER}" ] || [ -z "\$(ls -A ${env.XML_FOLDER} 2>/dev/null)" ]; then
-                        echo "⚠️  WARNING: XML folder is empty or doesn't exist: ${env.XML_FOLDER}"
-                        echo "⚠️  Training will be skipped."
+                        echo "❌ ERROR: XML folder is empty or doesn't exist: ${env.XML_FOLDER}"
                         echo "ℹ️  To configure: Provide XML_FOLDER_PATH build parameter (e.g., /path/to/xml_files)"
                         echo "ℹ️  Or set it as an environment variable in Jenkins job configuration"
-                        exit 0
+                        exit 1
                     fi
                 """
+                
+                // Set tokenizer output path as environment variable
+                env.TOKENIZER_OUTPUT = "${WORKSPACE}/tokenizer.json"
                 
                 // Run full training pipeline
                 sh """
                     echo "📊 Step 1: Extracting keywords from XML files..."
-                    ${env.PYTHON} extract_keywords.py --folder ${env.XML_FOLDER} --output ${env.DATASET_OUTPUT}
+                    ${env.PYTHON} extract_keywords.py --folder ${env.XML_FOLDER} --output ${env.DATASET_OUTPUT} || {
+                        echo "❌ ERROR: Keyword extraction failed!"
+                        exit 1
+                    }
                     
                     echo "🧹 Step 2: Cleaning dataset..."
-                    ${env.PYTHON} clean_keyword_dataset.py --input ${env.DATASET_OUTPUT} --output ${env.CLEANED_DATASET}
+                    ${env.PYTHON} clean_keyword_dataset.py --input ${env.DATASET_OUTPUT} --output ${env.CLEANED_DATASET} || {
+                        echo "❌ ERROR: Dataset cleaning failed!"
+                        exit 1
+                    }
                     
                     echo "🎯 Step 3: Inspecting dataset..."
                     ${env.PYTHON} inspect_keyword_dataset.py --file ${env.CLEANED_DATASET} || true
                     
                     echo "🏋️  Step 4: Training model..."
-                    TOKENIZER_OUTPUT="${WORKSPACE}/tokenizer.json"
                     ${env.PYTHON} train_keyword_predictor.py \
                         --input ${env.CLEANED_DATASET} \
                         --model-output ${env.MODEL_DIR}/${env.MODEL_NAME}_v${env.MODEL_VERSION}_${env.MODEL_TIMESTAMP}.keras \
-                        --tokenizer-output \${TOKENIZER_OUTPUT}
+                        --tokenizer-output ${env.TOKENIZER_OUTPUT} || {
+                        echo "❌ ERROR: Model training failed!"
+                        exit 1
+                    }
                     
                     echo "📦 Step 5: Copying model and tokenizer to latest..."
                     # Verify model file exists
@@ -107,14 +115,14 @@ node {
                     fi
                     
                     # Verify tokenizer file exists
-                    if [ ! -f "\${TOKENIZER_OUTPUT}" ]; then
-                        echo "❌ ERROR: Tokenizer file not found after training: \${TOKENIZER_OUTPUT}"
+                    if [ ! -f "${env.TOKENIZER_OUTPUT}" ]; then
+                        echo "❌ ERROR: Tokenizer file not found after training: ${env.TOKENIZER_OUTPUT}"
                         exit 1
                     fi
                     
                     cp ${env.MODEL_DIR}/${env.MODEL_NAME}_v${env.MODEL_VERSION}_${env.MODEL_TIMESTAMP}.keras ${env.MODEL_DIR}/${env.MODEL_NAME}_latest.keras
-                    cp \${TOKENIZER_OUTPUT} ${env.MODEL_DIR}/${env.TOKENIZER_NAME}_latest.json
-                    cp \${TOKENIZER_OUTPUT} ${env.MODEL_DIR}/${env.TOKENIZER_NAME}_v${env.MODEL_VERSION}_${env.MODEL_TIMESTAMP}.json
+                    cp ${env.TOKENIZER_OUTPUT} ${env.MODEL_DIR}/${env.TOKENIZER_NAME}_latest.json
+                    cp ${env.TOKENIZER_OUTPUT} ${env.MODEL_DIR}/${env.TOKENIZER_NAME}_v${env.MODEL_VERSION}_${env.MODEL_TIMESTAMP}.json
                 """
                 
                 echo "✅ Training completed successfully!"
@@ -141,15 +149,13 @@ node {
                 echo "🔄 Converting model to TensorFlow.js format..."
                 
                 // Verify required files exist before conversion
-                if (!fileExists("${env.MODEL_DIR}/${env.MODEL_NAME}_latest.keras")) {
-                    error("Cannot convert: Model file not found: ${env.MODEL_DIR}/${env.MODEL_NAME}_latest.keras. Training may have failed.")
-                }
                 if (!fileExists("${env.MODEL_DIR}/${env.TOKENIZER_NAME}_latest.json")) {
                     error("Cannot convert: Tokenizer file not found: ${env.MODEL_DIR}/${env.TOKENIZER_NAME}_latest.json. Training may have failed.")
                 }
                 
                 sh """
                     ${env.PIP} install tensorflowjs || true
+                    mkdir -p ${WORKSPACE}/tfjs_model
                     ${env.PYTHON} convert_to_tfjs.py \
                         --model ${env.MODEL_DIR}/${env.MODEL_NAME}_latest.keras \
                         --tokenizer ${env.MODEL_DIR}/${env.TOKENIZER_NAME}_latest.json \
@@ -163,7 +169,7 @@ node {
         }
         
         // Deploy Model - only if training was successful and deployment is enabled
-        if (params.DEPLOY_MODEL == true && fileExists("${env.MODEL_DIR}/${env.MODEL_NAME}_latest.keras")) {
+        if (params.DEPLOY_MODEL == true && fileExists("${env.MODEL_DIR}/${env.MODEL_NAME}_latest.keras") && fileExists("${env.MODEL_DIR}/${env.TOKENIZER_NAME}_latest.json")) {
             stage('Deploy Model') {
                 echo "🚀 Deploying model..."
                 // Add your deployment logic here
