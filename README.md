@@ -371,6 +371,32 @@ The project includes a Jenkins pipeline for automated testing and weekly model t
 
 See [JENKINS_SETUP.md](JENKINS_SETUP.md) for complete setup instructions.
 
+### Alternative: Cron Job for Weekly Training
+
+If Jenkins is not available in production, you can use a cron job as a backup option:
+
+**Quick Setup:**
+```bash
+# 1. Make script executable
+chmod +x run_weekly_training.sh
+
+# 2. Test manually first
+XML_FOLDER="/path/to/xml/files" ./run_weekly_training.sh
+
+# 3. Set up cron job (runs every Sunday at 2 AM)
+crontab -e
+# Add: 0 2 * * 0 /path/to/run_weekly_training.sh
+```
+
+**Features:**
+- Runs complete training pipeline automatically
+- Creates timestamped model versions
+- Logs all output to files
+- Sends email notifications (optional)
+- Works independently of Jenkins
+
+See [CRON_SETUP.md](CRON_SETUP.md) for detailed setup instructions and troubleshooting.
+
 ### Pipeline Stages
 
 1. **Checkout**: Get code from repository

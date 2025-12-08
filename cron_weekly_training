@@ -1,0 +1,32 @@
+# Cron job configuration for weekly model training
+# 
+# This file can be installed with: crontab cron_weekly_training
+# 
+# Schedule: Every Sunday at 2:00 AM
+# 
+# IMPORTANT: Update the paths below before installing!
+
+# Set environment variables (adjust paths as needed)
+PROJECT_DIR="/home/administrator/RafiWork/ML_copy/robot_keyword_model2"
+XML_FOLDER="/path/to/your/xml/files"
+NOTIFICATION_EMAIL="your-email@example.com"
+
+# Export variables for the cron job
+# Note: Cron jobs have minimal environment, so we set them here
+# The script will also read these from environment
+
+# Weekly training - Every Sunday at 2:00 AM
+# Format: minute hour day month weekday command
+0 2 * * 0 cd "${PROJECT_DIR}" && XML_FOLDER="${XML_FOLDER}" NOTIFICATION_EMAIL="${NOTIFICATION_EMAIL}" "${PROJECT_DIR}/run_weekly_training.sh" >> "${PROJECT_DIR}/logs/cron.log" 2>&1
+
+# Alternative schedules (uncomment to use):
+# 
+# Every Monday at 3:00 AM
+# 0 3 * * 1 cd "${PROJECT_DIR}" && XML_FOLDER="${XML_FOLDER}" "${PROJECT_DIR}/run_weekly_training.sh" >> "${PROJECT_DIR}/logs/cron.log" 2>&1
+#
+# First day of each month at 1:00 AM
+# 0 1 1 * * cd "${PROJECT_DIR}" && XML_FOLDER="${XML_FOLDER}" "${PROJECT_DIR}/run_weekly_training.sh" >> "${PROJECT_DIR}/logs/cron.log" 2>&1
+#
+# Every day at 2:00 AM (for testing)
+# 0 2 * * * cd "${PROJECT_DIR}" && XML_FOLDER="${XML_FOLDER}" "${PROJECT_DIR}/run_weekly_training.sh" >> "${PROJECT_DIR}/logs/cron.log" 2>&1
+
