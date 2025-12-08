@@ -15,10 +15,12 @@ import warnings
 # Set TensorFlow log level (keep warnings for debugging)
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "1"  # Only show WARNING and ERROR
 
-# Suppress the harmless TensorFlow.js keras version lookup warning
+# Suppress harmless warnings
 warnings.filterwarnings(
     "ignore", message=".*failed to lookup keras version.*", category=UserWarning
 )
+# Suppress TensorFlow Decision Forests YDF advertisement (we use LSTM, not decision forests)
+warnings.filterwarnings("ignore", message=".*Try https://ydf.readthedocs.io.*")
 
 import tensorflow as tf
 from tensorflow.keras.preprocessing.text import tokenizer_from_json

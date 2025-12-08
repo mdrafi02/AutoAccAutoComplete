@@ -3,10 +3,15 @@ import numpy as np
 import ijson
 import argparse
 import os
+import warnings
 from math import ceil
 
 # Set TensorFlow log level to reduce verbose output (keep warnings for important issues)
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "1"  # Only show WARNING and ERROR
+
+# Suppress TensorFlow Decision Forests YDF advertisement message
+# (We use LSTM, not decision forests, so this message is not relevant)
+warnings.filterwarnings("ignore", message=".*Try https://ydf.readthedocs.io.*")
 
 import tensorflow as tf
 from tensorflow.keras.preprocessing.text import Tokenizer, tokenizer_from_json
