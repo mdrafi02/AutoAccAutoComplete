@@ -4,6 +4,10 @@ import ijson
 import argparse
 import os
 from math import ceil
+
+# Set TensorFlow log level to reduce verbose output (keep warnings for important issues)
+os.environ["TF_CPP_MIN_LOG_LEVEL"] = "1"  # Only show WARNING and ERROR
+
 import tensorflow as tf
 from tensorflow.keras.preprocessing.text import Tokenizer, tokenizer_from_json
 from tensorflow.keras.preprocessing.sequence import pad_sequences
@@ -329,7 +333,19 @@ def train_model(
     # STEP 7: Save model + tokenizer
     # ---------------------------
     print("\nSaving model and tokenizer...")
-    model.save(model_save_path)
+    # Ensure we use native Keras format (.keras) - this is the recommended format
+    # and avoids HDF5 deprecation warnings
+    if not model_save_path.endswith(".keras"):
+        if model_save_path.endswith((".h5", ".hdf5")):
+            # Replace legacy format with .keras
+            model_save_path = model_save_path.rsplit(".", 1)[0] + ".keras"
+        else:
+            # Add .keras extension if no extension provided
+            model_save_path = model_save_path + ".keras"
+    
+    # Save in native Keras format (recommended, avoids HDF5 warnings)
+    model.save(model_save_path, save_format="keras")
+    
     with open(tokenizer_save_path, "w", encoding="utf-8") as f:
         f.write(tokenizer.to_json())
 

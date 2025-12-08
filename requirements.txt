@@ -1,13 +1,17 @@
 # Core dependencies for keyword prediction
-tensorflow>=2.19.0
-numpy>=1.24.0
-scikit-learn>=1.3.0
+tensorflow>=2.19.0,<3.0.0
+numpy>=1.24.0,<2.0.0
+scikit-learn>=1.3.0,<2.0.0
 ijson>=3.2.0
 
 # API dependencies
-fastapi>=0.104.0
-uvicorn[standard]>=0.24.0
-pydantic>=2.0.0
+fastapi>=0.115.0
+uvicorn[standard]>=0.32.0
+pydantic>=2.10.0
+
+# Fix pkg_resources deprecation warning from tensorflow-hub
+# Pin setuptools to avoid pkg_resources deprecation until tensorflow-hub updates
+setuptools<81.0.0
 
 # Testing dependencies (optional, for development)
 pytest>=7.4.0
@@ -21,6 +25,6 @@ black>=23.0.0
 flake8>=6.0.0
 mypy>=1.5.0
 
-# Optional: TensorFlow.js conversion
-# tensorflowjs>=4.22.0  # Uncomment if you need to convert models to TensorFlow.js
+# Optional: TensorFlow.js conversion (latest version to fix keras version lookup)
+tensorflowjs>=4.22.0  # Uncomment if you need to convert models to TensorFlow.js
 

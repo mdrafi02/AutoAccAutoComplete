@@ -166,7 +166,8 @@ node {
                 }
                 
                 sh """
-                    ${env.PIP} install tensorflowjs || true
+                    # Install latest tensorflowjs for better .keras format support
+                    ${env.PIP} install "tensorflowjs>=4.22.0" || true
                     mkdir -p ${WORKSPACE}/tfjs_model
                     ${env.PYTHON} convert_to_tfjs.py \
                         --model ${env.MODEL_DIR}/${env.MODEL_NAME}_latest.keras \

@@ -10,6 +10,10 @@ This script converts:
 import json
 import argparse
 import os
+
+# Set TensorFlow log level (keep warnings for debugging)
+os.environ["TF_CPP_MIN_LOG_LEVEL"] = "1"  # Only show WARNING and ERROR
+
 import tensorflow as tf
 from tensorflow.keras.preprocessing.text import tokenizer_from_json
 
@@ -19,8 +23,15 @@ DEFAULT_OUTPUT_DIR = "tfjs_model"
 
 
 def convert_model_to_tfjs(model_path, output_dir, tfjs_module):
-    """Convert Keras model to TensorFlow.js format."""
+    """Convert Keras model to TensorFlow.js format.
+    
+    Uses native Keras format (.keras) which is the recommended format
+    and works better with TensorFlow.js conversion.
+    """
     print(f"Loading model from {model_path}...")
+    # Load model - native .keras format loads without issues
+    # The 'failed to lookup keras version' warning is harmless and can be ignored
+    # It occurs when TensorFlow.js tries to read metadata, but conversion still works
     model = tf.keras.models.load_model(model_path)
 
     print(f"Converting model to TensorFlow.js format...")
