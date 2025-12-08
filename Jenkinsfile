@@ -127,8 +127,8 @@ node {
                     error("Tokenizer file not found: ${env.MODEL_DIR}/${env.TOKENIZER_NAME}_v${env.MODEL_VERSION}_${env.MODEL_TIMESTAMP}.json")
                 }
                 
-                // Archive model artifacts
-                archiveArtifacts artifacts: "${env.MODEL_DIR}/${env.MODEL_NAME}_v${env.MODEL_VERSION}_${env.MODEL_TIMESTAMP}.keras, ${env.MODEL_DIR}/${env.TOKENIZER_NAME}_v${env.MODEL_VERSION}_${env.MODEL_TIMESTAMP}.json", allowEmptyArchive: false
+                // Archive model artifacts (use relative paths from workspace)
+                archiveArtifacts artifacts: "models/${env.MODEL_NAME}_v${env.MODEL_VERSION}_${env.MODEL_TIMESTAMP}.keras, models/${env.TOKENIZER_NAME}_v${env.MODEL_VERSION}_${env.MODEL_TIMESTAMP}.json", allowEmptyArchive: false
             } catch (Exception e) {
                 echo "❌ Training failed: ${e.getMessage()}"
                 throw e
