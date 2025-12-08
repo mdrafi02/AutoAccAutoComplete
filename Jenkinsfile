@@ -29,11 +29,12 @@ node {
     stage('Setup Environment') {
         // Set timestamp for model versioning
         env.MODEL_TIMESTAMP = sh(
-            script: "date +'%Y%m%d_%H%M%S'",
+            script: "date +%Y%m%d_%H%M%S",
             returnStdout: true
         ).trim()
         
         echo "🔧 Setting up Python virtual environment..."
+        echo "   Model timestamp: ${env.MODEL_TIMESTAMP}"
         sh """
             python3 -m venv ${env.VENV_PATH} || true
             ${env.PIP} install --upgrade pip wheel
