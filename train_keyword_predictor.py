@@ -343,9 +343,10 @@ def train_model(
             # Add .keras extension if no extension provided
             model_save_path = model_save_path + ".keras"
 
-    # Save in native Keras format using tf.keras.saving.save_model
-    # This explicitly uses the new format and avoids HDF5 deprecation warnings
-    tf.keras.saving.save_model(model, model_save_path)
+    # Save in native Keras format - use model.save() with explicit format
+    # The save_format="keras" parameter ensures native Keras format (not HDF5)
+    # This avoids HDF5 deprecation warnings
+    model.save(model_save_path, save_format="keras")
 
     with open(tokenizer_save_path, "w", encoding="utf-8") as f:
         f.write(tokenizer.to_json())
