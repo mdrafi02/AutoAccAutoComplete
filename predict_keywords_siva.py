@@ -61,11 +61,17 @@ def predict_next_keyword(model, tokenizer, context_keywords, top_k=3):
         
         # Get top_k indices, excluding 0 (padding token) and invalid indices
         # Create list of (index, probability) for valid indices only
+        # Valid indices are those in the tokenizer's word_index (1-based)
         valid_predictions = [
             (idx, float(predictions[idx])) 
             for idx in range(1, len(predictions))  # Skip 0 (padding)
             if idx in index_to_word
         ]
+        
+        if not valid_predictions:
+            # If no valid predictions, return empty list
+            # This shouldn't happen with a properly trained model, but handle gracefully
+            return []
         
         # Sort by probability descending and take top_k
         valid_predictions.sort(key=lambda x: x[1], reverse=True)
@@ -73,6 +79,9 @@ def predict_next_keyword(model, tokenizer, context_keywords, top_k=3):
         
         # Convert to (keyword, probability) tuples
         results = [(index_to_word[idx], prob) for idx, prob in top_predictions]
+        
+        # Ensure results are sorted by probability (descending)
+        results.sort(key=lambda x: x[1], reverse=True)
         return results
     except Exception as e:
         raise RuntimeError(f"Error during prediction: {e}")
