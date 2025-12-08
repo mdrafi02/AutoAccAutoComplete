@@ -10,9 +10,15 @@ This script converts:
 import json
 import argparse
 import os
+import warnings
 
 # Set TensorFlow log level (keep warnings for debugging)
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "1"  # Only show WARNING and ERROR
+
+# Suppress the harmless TensorFlow.js keras version lookup warning
+warnings.filterwarnings(
+    "ignore", message=".*failed to lookup keras version.*", category=UserWarning
+)
 
 import tensorflow as tf
 from tensorflow.keras.preprocessing.text import tokenizer_from_json

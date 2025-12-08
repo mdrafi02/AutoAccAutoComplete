@@ -36,7 +36,9 @@ node {
         echo "🔧 Setting up Python virtual environment..."
         sh """
             python3 -m venv ${env.VENV_PATH} || true
-            ${env.PIP} install --upgrade pip setuptools wheel
+            ${env.PIP} install --upgrade pip wheel
+            # Install setuptools<81 first to avoid pkg_resources deprecation warning
+            ${env.PIP} install "setuptools<81.0.0"
             ${env.PIP} install -r requirements.txt
         """
     }
