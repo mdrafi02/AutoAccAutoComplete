@@ -3,6 +3,10 @@ properties([
         booleanParam(name: 'RUN_TRAINING', defaultValue: false, description: 'Run model training pipeline'),
         booleanParam(name: 'DEPLOY_MODEL', defaultValue: false, description: 'Deploy model to production'),
         stringParam(name: 'XML_FOLDER_PATH', defaultValue: '', description: 'Path to XML files folder (e.g., /path/to/xml_files or relative to workspace)')
+    ]),
+    // Schedule weekly training: Every Sunday at 2 AM (random minute to avoid load spikes)
+    pipelineTriggers([
+        cron('H 2 * * 0')  // H = hash (random minute), 2 = hour, * = any day, * = any month, 0 = Sunday
     ])
 ])
 
