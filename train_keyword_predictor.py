@@ -295,8 +295,9 @@ def train_model(
 
                 if current < self.best:
                     self.best = current
-                    # Save in native Keras format explicitly to avoid HDF5 warning
-                    self.model.save(self.filepath, save_format="keras")
+                    # Save in native Keras format - format inferred from .keras extension in Keras 3
+                    # save_format parameter is deprecated, so we rely on file extension
+                    self.model.save(self.filepath)
                     if self.verbose > 0:
                         print(
                             f"\nEpoch {epoch + 1}: {self.monitor} improved to {current:.4f}, saving model to {self.filepath}"
@@ -375,11 +376,13 @@ def train_model(
             # Add .keras extension if no extension provided
             model_save_path = model_save_path + ".keras"
 
-    # Save in native Keras format - use model.save() with explicit format
-    # The save_format="keras" parameter ensures native Keras format (not HDF5)
-    # This avoids HDF5 deprecation warnings
-    print(f"   Saving model to {model_save_path} with save_format='keras'...")
-    model.save(model_save_path, save_format="keras")
+    # Save in native Keras format - in Keras 3 (TF 2.19+), format is inferred from extension
+    # Using .keras extension ensures native Keras format (not HDF5)
+    # Note: save_format parameter is deprecated in Keras 3, so we rely on file extension
+    print(
+        f"   Saving model to {model_save_path} (format inferred from .keras extension)..."
+    )
+    model.save(model_save_path)
 
     # Verify the file was created and check its size
     if os.path.exists(model_save_path):
