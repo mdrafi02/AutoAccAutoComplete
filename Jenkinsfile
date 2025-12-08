@@ -90,13 +90,13 @@ node {
                     ${env.PYTHON} clean_keyword_dataset.py --input ${env.DATASET_OUTPUT} --output ${env.CLEANED_DATASET}
                     
                     echo "🎯 Step 3: Inspecting dataset..."
-                    ${env.PYTHON} inspect_keyword_dataset.py --input ${env.CLEANED_DATASET} || true
+                    ${env.PYTHON} inspect_keyword_dataset.py --file ${env.CLEANED_DATASET} || true
                     
                     echo "🏋️  Step 4: Training model..."
                     TOKENIZER_OUTPUT="${WORKSPACE}/tokenizer.json"
                     ${env.PYTHON} train_keyword_predictor.py \
                         --input ${env.CLEANED_DATASET} \
-                        --output ${env.MODEL_DIR}/${env.MODEL_NAME}_v${env.MODEL_VERSION}_${env.MODEL_TIMESTAMP}.keras \
+                        --model-output ${env.MODEL_DIR}/${env.MODEL_NAME}_v${env.MODEL_VERSION}_${env.MODEL_TIMESTAMP}.keras \
                         --tokenizer-output \${TOKENIZER_OUTPUT}
                     
                     echo "📦 Step 5: Copying model and tokenizer to latest..."
