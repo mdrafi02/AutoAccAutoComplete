@@ -24,7 +24,7 @@ DEFAULT_OUTPUT_DIR = "tfjs_model"
 
 def convert_model_to_tfjs(model_path, output_dir, tfjs_module):
     """Convert Keras model to TensorFlow.js format.
-    
+
     Uses native Keras format (.keras) which is the recommended format
     and works better with TensorFlow.js conversion.
     """
