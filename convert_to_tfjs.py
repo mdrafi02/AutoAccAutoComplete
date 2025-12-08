@@ -27,6 +27,10 @@ warnings.filterwarnings(
     message=".*You are saving your model as an HDF5 file.*",
     category=UserWarning,
 )
+# Also suppress absl logging warnings (TensorFlow uses absl for logging)
+import logging
+
+logging.getLogger("absl").setLevel(logging.ERROR)
 
 import tensorflow as tf
 from tensorflow.keras.preprocessing.text import tokenizer_from_json
