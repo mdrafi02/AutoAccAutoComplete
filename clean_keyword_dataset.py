@@ -6,8 +6,8 @@ Streaming cleaning script (optimized):
  - supports optional whitelist (if empty -> whitelist disabled)
  - writes output incrementally (streaming) to avoid memory blowup
  - prints counts for diagnostics
- - PRESERVES whitelisted keywords even when sequences become short after 
-   filtering out blacklisted keywords (e.g., login1. keywords in sequences 
+ - PRESERVES whitelisted keywords even when sequences become short after
+   filtering out blacklisted keywords (e.g., login1. keywords in sequences
    with builtin. keywords will be preserved)
  - DEDUPLICATES consecutive repeated keywords (from retry mechanisms like
    wait_until_keyword_succeeds) to prevent frequency inflation
@@ -30,9 +30,9 @@ DEFAULT_OUTPUT_FILE = "keyword_dataset_cleaned.json"
 
 # WHITELIST: if both are empty, whitelist is treated as disabled (keep-all unless blacklisted)
 ALLOWED_KEYWORDS = set()  # examples: {"connect to ap", "configure ssid"}
-#ALLOWED_LIBRARIES_PREFIX = tuple()  # examples: ("wifilibrary.", "networklibrary.")
+# ALLOWED_LIBRARIES_PREFIX = tuple()  # examples: ("wifilibrary.", "networklibrary.")
 ALLOWED_LIBRARIES_PREFIX = tuple(
-        [            
+    [
         "login1.",
         "policy1.",
         "tntmgt1.",
@@ -46,27 +46,24 @@ ALLOWED_LIBRARIES_PREFIX = tuple(
         "property1.",
         "utils1.",
         "wifi1.",
-        ]
-        )
+    ]
+)
 
 # BLACKLIST exact keywords (normalize to lowercase)
-BLACKLIST_KEYWORDS = {
-    "sleep", "log", "log_to_console", "comment", "no_operation"
-}
+BLACKLIST_KEYWORDS = {"sleep", "log", "log_to_console", "comment", "no_operation"}
 
 # BLACKLIST prefix (library names) - case-insensitive, provide canonical prefix strings
 BLACKLIST_PREFIXES = (
-    "builtin.",        # e.g. builtin.log, builtin.sleep
+    "builtin.",  # e.g. builtin.log, builtin.sleep
     "seleniumlibrary.",
     "operatingsystem.",
 )
 
 # AUTO-REMOVE frequently-occurring junk
-AUTO_REMOVE_COMMON = {
-    "sleep", "log", "log_to_console", "run_keyword", "set_variable"
-}
+AUTO_REMOVE_COMMON = {"sleep", "log", "log_to_console", "run_keyword", "set_variable"}
 
 MIN_SEQUENCE_LENGTH = 2  # drop sequences shorter than this
+
 
 # -----------------------------
 # Utility helpers
@@ -77,6 +74,7 @@ def normalize_keyword(keyword):
         return ""
     return keyword.strip().lower()
 
+
 def any_prefix_matches(keyword, prefixes):
     """Check if keyword matches any of the given prefixes (case-insensitive)."""
     keyword_lower = keyword.lower()
@@ -85,38 +83,44 @@ def any_prefix_matches(keyword, prefixes):
             return True
     return False
 
+
 # -----------------------------
 # Main cleaning function
 # -----------------------------
 def clean_dataset(input_file, output_file):
     """Clean the dataset with streaming processing."""
-    
+
     # Use configured auto-remove set
     AUTO_REMOVE_KEYWORDS_FINAL = {normalize_keyword(kw) for kw in AUTO_REMOVE_COMMON}
-    
+
     # Normalize config sets / prefixes for comparisons (do once)
     BLACKLIST_KEYWORDS_NORMALIZED = {normalize_keyword(kw) for kw in BLACKLIST_KEYWORDS}
     ALLOWED_KEYWORDS_NORMALIZED = {normalize_keyword(kw) for kw in ALLOWED_KEYWORDS}
     BLACKLIST_PREFIXES_NORMALIZED = tuple(p.lower() for p in BLACKLIST_PREFIXES)
     ALLOWED_LIB_PREFIXES_NORMALIZED = tuple(p.lower() for p in ALLOWED_LIBRARIES_PREFIX)
-    
-    whitelist_enabled = bool(ALLOWED_KEYWORDS_NORMALIZED or ALLOWED_LIB_PREFIXES_NORMALIZED)
-    
+
+    whitelist_enabled = bool(
+        ALLOWED_KEYWORDS_NORMALIZED or ALLOWED_LIB_PREFIXES_NORMALIZED
+    )
+
     # Counters for diagnostics
-    removed_counters = Counter()   # reasons for removing entire sequence (not per-keyword)
+    removed_counters = (
+        Counter()
+    )  # reasons for removing entire sequence (not per-keyword)
     per_keyword_removed = Counter()
     kept_count = 0
     skipped_short = 0
     duplicates_skipped = 0
     processed = 0
-    
+
     seen_sequences = set()  # stores tuples of keywords (normalized) to dedupe
-    
+
     print("Streaming cleaning + writing output...")
-    
-    with open(input_file, "r", encoding="utf-8") as f_in, \
-         open(output_file, "w", encoding="utf-8") as f_out:
-        
+
+    with open(input_file, "r", encoding="utf-8") as f_in, open(
+        output_file, "w", encoding="utf-8"
+    ) as f_out:
+
         f_out.write("[\n")
         first_out = True
 
@@ -126,8 +130,10 @@ def clean_dataset(input_file, output_file):
             cleaned_seq = []
             removed_reasons_for_seq = set()
 
-            has_whitelisted_keyword = False  # Track if sequence contains whitelisted keywords
-            
+            has_whitelisted_keyword = (
+                False  # Track if sequence contains whitelisted keywords
+            )
+
             for raw_keyword in raw_keywords:
                 normalized_keyword = normalize_keyword(raw_keyword)
                 if not normalized_keyword:
@@ -140,7 +146,9 @@ def clean_dataset(input_file, output_file):
                     continue
 
                 # blacklist prefix
-                if any_prefix_matches(normalized_keyword, BLACKLIST_PREFIXES_NORMALIZED):
+                if any_prefix_matches(
+                    normalized_keyword, BLACKLIST_PREFIXES_NORMALIZED
+                ):
                     per_keyword_removed["blacklist_prefix"] += 1
                     continue
 
@@ -155,7 +163,9 @@ def clean_dataset(input_file, output_file):
                     if normalized_keyword in ALLOWED_KEYWORDS_NORMALIZED:
                         is_allowed = True
                         has_whitelisted_keyword = True
-                    if any_prefix_matches(normalized_keyword, ALLOWED_LIB_PREFIXES_NORMALIZED):
+                    if any_prefix_matches(
+                        normalized_keyword, ALLOWED_LIB_PREFIXES_NORMALIZED
+                    ):
                         is_allowed = True
                         has_whitelisted_keyword = True
                     if not is_allowed:
@@ -224,7 +234,7 @@ def clean_dataset(input_file, output_file):
                 print(f"Processed {processed:,} items - kept {kept_count:,}")
 
         f_out.write("\n]\n")
-    
+
     # -----------------------------
     # Final summary
     # -----------------------------
@@ -235,27 +245,42 @@ def clean_dataset(input_file, output_file):
     print(f"Duplicates skipped: {duplicates_skipped:,}")
     print(f"Per-keyword removals sample: {per_keyword_removed.most_common(10)}")
     print(f"Sequence removal reasons: {removed_counters.most_common()}")
-    
+
     print(f"\n✅ Saved cleaned dataset -> {output_file}")
+
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Clean keyword dataset")
-    parser.add_argument("--input", "-i", type=str, default=DEFAULT_INPUT_FILE,
-                       help="Input JSON dataset file")
-    parser.add_argument("--output", "-o", type=str, default=DEFAULT_OUTPUT_FILE,
-                       help="Output cleaned JSON dataset file")
-    parser.add_argument("--append", "-a", action="store_true",
-                       help="Append cleaned data to existing output file (removes duplicates)")
-    
+    parser.add_argument(
+        "--input",
+        "-i",
+        type=str,
+        default=DEFAULT_INPUT_FILE,
+        help="Input JSON dataset file",
+    )
+    parser.add_argument(
+        "--output",
+        "-o",
+        type=str,
+        default=DEFAULT_OUTPUT_FILE,
+        help="Output cleaned JSON dataset file",
+    )
+    parser.add_argument(
+        "--append",
+        "-a",
+        action="store_true",
+        help="Append cleaned data to existing output file (removes duplicates)",
+    )
+
     args = parser.parse_args()
-    
+
     try:
         if args.append and Path(args.output).exists():
             # Merge mode: load existing, clean new, merge and dedupe
             print(f"📂 Loading existing cleaned dataset: {args.output}")
             existing_sequences = set()
             existing_data = []
-            
+
             try:
                 with open(args.output, "r", encoding="utf-8") as f:
                     for item in ijson.items(f, "item"):
@@ -268,11 +293,11 @@ if __name__ == "__main__":
                 print(f"⚠️  Warning: Could not load existing file: {e}")
                 existing_sequences = set()
                 existing_data = []
-            
+
             # Clean new data
             temp_output = args.output + ".tmp"
             clean_dataset(args.input, temp_output)
-            
+
             # Merge cleaned new data with existing
             print("🔄 Merging with existing cleaned data...")
             new_count = 0
@@ -283,7 +308,7 @@ if __name__ == "__main__":
                         existing_data.append(item)
                         existing_sequences.add(seq)
                         new_count += 1
-            
+
             # Write merged data
             with open(args.output, "w", encoding="utf-8") as f_out:
                 f_out.write("[\n")
@@ -292,13 +317,14 @@ if __name__ == "__main__":
                         f_out.write(",\n")
                     json.dump(item, f_out, ensure_ascii=False)
                 f_out.write("\n]\n")
-            
+
             # Clean up temp file
             Path(temp_output).unlink()
-            print(f"✅ Merged: {new_count} new sequences added, {len(existing_data)} total")
+            print(
+                f"✅ Merged: {new_count} new sequences added, {len(existing_data)} total"
+            )
         else:
             clean_dataset(args.input, args.output)
     except Exception as e:
         print(f"❌ Error: {e}")
         exit(1)
-

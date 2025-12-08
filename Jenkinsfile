@@ -51,11 +51,22 @@ node {
     stage('Code Quality') {
         echo "🔍 Running code quality checks..."
         sh """
-            # Exclude venv, node_modules, and other directories from linting
+            # Check code formatting with black (exclude checkpoints and other generated files)
+            echo "📝 Checking code formatting..."
+            ${env.PYTHON} -m black --check . --exclude='/(venv|env|\.venv|node_modules|build|dist|\.git|\.eggs|\.mypy_cache|\.pytest_cache|\.tox|__pycache__|\.ipynb_checkpoints)/' || {
+                echo "❌ Code formatting check failed! Run 'black .' to auto-format."
+                exit 1
+            }
+            echo "✅ Code formatting is correct!"
+            
+            # Run flake8 for critical errors only (syntax errors, undefined names, etc.)
+            echo "🔍 Running flake8 for critical errors..."
             ${env.PYTHON} -m flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics \
-                --exclude=venv,env,.venv,node_modules,build,dist,*.egg-info || true
-            # Check code formatting (exclude venv and other generated directories)
-            ${env.PYTHON} -m black --check . --exclude='/(venv|env|\\.venv|node_modules|build|dist|\\.git|\\.eggs|\\.mypy_cache|\\.pytest_cache|\\.tox)/' || true
+                --exclude=venv,env,.venv,node_modules,build,dist,*.egg-info,__pycache__,.pytest_cache,.mypy_cache || {
+                echo "❌ Flake8 found critical errors!"
+                exit 1
+            }
+            echo "✅ No critical errors found!"
         """
     }
     

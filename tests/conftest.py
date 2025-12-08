@@ -1,6 +1,7 @@
 """
 Pytest configuration and shared fixtures for all tests.
 """
+
 import pytest
 import json
 import tempfile
@@ -41,20 +42,20 @@ def mock_model(sample_tokenizer):
     """Create a minimal mock model for testing."""
     vocab_size = len(sample_tokenizer.word_index) + 1
     context_size = 2
-    
-    model = Sequential([
-        Embedding(vocab_size, 8, input_length=context_size),
-        LSTM(16, return_sequences=False),
-        Dropout(0.2),
-        Dense(vocab_size, activation="softmax")
-    ])
-    
-    model.compile(
-        loss="sparse_categorical_crossentropy",
-        optimizer="adam",
-        metrics=["accuracy"]
+
+    model = Sequential(
+        [
+            Embedding(vocab_size, 8, input_length=context_size),
+            LSTM(16, return_sequences=False),
+            Dropout(0.2),
+            Dense(vocab_size, activation="softmax"),
+        ]
     )
-    
+
+    model.compile(
+        loss="sparse_categorical_crossentropy", optimizer="adam", metrics=["accuracy"]
+    )
+
     return model
 
 
@@ -71,7 +72,7 @@ def temp_tokenizer_file(sample_tokenizer, tmp_path):
     """Save a temporary tokenizer file for testing."""
     tokenizer_path = tmp_path / "test_tokenizer.json"
     tokenizer_json = sample_tokenizer.to_json()
-    with open(tokenizer_path, 'w', encoding='utf-8') as f:
+    with open(tokenizer_path, "w", encoding="utf-8") as f:
         json.dump(json.loads(tokenizer_json), f, indent=2)
     return str(tokenizer_path)
 
@@ -124,7 +125,7 @@ def sample_xml_content():
 def temp_xml_file(sample_xml_content, tmp_path):
     """Create a temporary XML file for testing."""
     xml_path = tmp_path / "test_output.xml"
-    with open(xml_path, 'w', encoding='utf-8') as f:
+    with open(xml_path, "w", encoding="utf-8") as f:
         f.write(sample_xml_content)
     return str(xml_path)
 
@@ -137,7 +138,6 @@ def sample_dataset_json(sample_keywords, tmp_path):
         for i, keywords in enumerate(sample_keywords)
     ]
     json_path = tmp_path / "test_dataset.json"
-    with open(json_path, 'w', encoding='utf-8') as f:
+    with open(json_path, "w", encoding="utf-8") as f:
         json.dump(dataset, f, indent=2)
     return str(json_path)
-
