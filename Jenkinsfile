@@ -28,12 +28,10 @@ node {
     
     stage('Setup Environment') {
         // Set timestamp for model versioning (sandbox-safe approach)
-        script {
-            env.MODEL_TIMESTAMP = sh(
-                script: 'date +%Y%m%d_%H%M%S',
-                returnStdout: true
-            ).trim()
-        }
+        env.MODEL_TIMESTAMP = sh(
+            script: 'date +%Y%m%d_%H%M%S',
+            returnStdout: true
+        ).trim()
         
         echo "🔧 Setting up Python virtual environment..."
         echo "   Model timestamp: ${env.MODEL_TIMESTAMP}"
