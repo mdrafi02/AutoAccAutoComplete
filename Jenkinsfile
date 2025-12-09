@@ -2,6 +2,7 @@ properties([
     parameters([
         booleanParam(name: 'RUN_TRAINING', defaultValue: false, description: 'Run model training pipeline'),
         booleanParam(name: 'DEPLOY_MODEL', defaultValue: false, description: 'Deploy model to production'),
+        booleanParam(name: 'FRESH_TRAINING', defaultValue: false, description: 'Train on new data only (ignore old data). Default: false (merge with old data)'),
         stringParam(name: 'XML_FOLDER_PATH', defaultValue: '', description: 'Path to XML files folder (e.g., /path/to/xml_files or relative to workspace)')
     ]),
     // Schedule weekly training: Every Sunday at 2 AM (random minute to avoid load spikes)
@@ -105,26 +106,50 @@ node {
         
         stage('Extract Keywords') {
             echo "📊 Extracting keywords from XML files..."
-            echo "🔄 Using merge mode to preserve existing data..."
-            sh """
-                ${env.PYTHON} extract_keywords.py --folder ${env.XML_FOLDER} --output ${env.DATASET_OUTPUT} --merge || {
-                    echo "❌ ERROR: Keyword extraction failed!"
-                    exit 1
-                }
-            """
-            echo "✅ Keyword extraction completed! (Old data preserved, duplicates removed)"
+            
+            if (params.FRESH_TRAINING) {
+                echo "🔄 Using fresh mode (new data only)..."
+                sh """
+                    ${env.PYTHON} extract_keywords.py --folder ${env.XML_FOLDER} --output ${env.DATASET_OUTPUT} || {
+                        echo "❌ ERROR: Keyword extraction failed!"
+                        exit 1
+                    }
+                """
+                echo "✅ Keyword extraction completed! (New data only, old data ignored)"
+            } else {
+                echo "🔄 Using merge mode (preserve existing data)..."
+                sh """
+                    ${env.PYTHON} extract_keywords.py --folder ${env.XML_FOLDER} --output ${env.DATASET_OUTPUT} --merge || {
+                        echo "❌ ERROR: Keyword extraction failed!"
+                        exit 1
+                    }
+                """
+                echo "✅ Keyword extraction completed! (Old data preserved, duplicates removed)"
+            }
         }
         
         stage('Clean Dataset') {
             echo "🧹 Cleaning dataset..."
-            echo "🔄 Using append mode to preserve existing cleaned data..."
-            sh """
-                ${env.PYTHON} clean_keyword_dataset.py --input ${env.DATASET_OUTPUT} --output ${env.CLEANED_DATASET} --append || {
-                    echo "❌ ERROR: Dataset cleaning failed!"
-                    exit 1
-                }
-            """
-            echo "✅ Dataset cleaning completed! (Old cleaned data preserved, duplicates removed)"
+            
+            if (params.FRESH_TRAINING) {
+                echo "🔄 Using fresh mode (new data only)..."
+                sh """
+                    ${env.PYTHON} clean_keyword_dataset.py --input ${env.DATASET_OUTPUT} --output ${env.CLEANED_DATASET} || {
+                        echo "❌ ERROR: Dataset cleaning failed!"
+                        exit 1
+                    }
+                """
+                echo "✅ Dataset cleaning completed! (New data only, old cleaned data ignored)"
+            } else {
+                echo "🔄 Using append mode (preserve existing cleaned data)..."
+                sh """
+                    ${env.PYTHON} clean_keyword_dataset.py --input ${env.DATASET_OUTPUT} --output ${env.CLEANED_DATASET} --append || {
+                        echo "❌ ERROR: Dataset cleaning failed!"
+                        exit 1
+                    }
+                """
+                echo "✅ Dataset cleaning completed! (Old cleaned data preserved, duplicates removed)"
+            }
         }
         
         stage('Inspect Dataset') {
@@ -140,7 +165,10 @@ node {
             
             sh """
                 # Check if we should continue training from existing model
-                if [ -f "${env.MODEL_DIR}/${env.MODEL_NAME}_latest.keras" ] && [ -f "${env.MODEL_DIR}/${env.TOKENIZER_NAME}_latest.json" ]; then
+                # Only use incremental training if:
+                # 1. FRESH_TRAINING is false (merge mode)
+                # 2. Existing model and tokenizer files exist
+                if [ "${params.FRESH_TRAINING}" = "false" ] && [ -f "${env.MODEL_DIR}/${env.MODEL_NAME}_latest.keras" ] && [ -f "${env.MODEL_DIR}/${env.TOKENIZER_NAME}_latest.json" ]; then
                     echo "🔄 Continuing training from existing model (incremental learning)..."
                     echo "   Existing model: ${env.MODEL_DIR}/${env.MODEL_NAME}_latest.keras"
                     echo "   Existing tokenizer: ${env.MODEL_DIR}/${env.TOKENIZER_NAME}_latest.json"
@@ -155,7 +183,11 @@ node {
                         exit 1
                     }
                 else
-                    echo "🆕 Training new model from scratch..."
+                    if [ "${params.FRESH_TRAINING}" = "true" ]; then
+                        echo "🆕 Training new model from scratch (fresh training mode)..."
+                    else
+                        echo "🆕 Training new model from scratch (no existing model found)..."
+                    fi
                     ${env.PYTHON} train_keyword_predictor.py \
                         --input ${env.CLEANED_DATASET} \
                         --model-output ${env.MODEL_DIR}/${env.MODEL_NAME}_v${env.MODEL_VERSION}_${env.MODEL_TIMESTAMP}.keras \
