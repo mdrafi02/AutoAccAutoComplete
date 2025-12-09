@@ -163,15 +163,19 @@ node {
         stage('Train Model') {
             echo "🏋️  Training LSTM model..."
             
-            sh """
-                # Check if we should continue training from existing model
-                # Only use incremental training if:
-                # 1. FRESH_TRAINING is false (merge mode)
-                # 2. Existing model and tokenizer files exist
-                if [ "${params.FRESH_TRAINING}" = "false" ] && [ -f "${env.MODEL_DIR}/${env.MODEL_NAME}_latest.keras" ] && [ -f "${env.MODEL_DIR}/${env.TOKENIZER_NAME}_latest.json" ]; then
-                    echo "🔄 Continuing training from existing model (incremental learning)..."
-                    echo "   Existing model: ${env.MODEL_DIR}/${env.MODEL_NAME}_latest.keras"
-                    echo "   Existing tokenizer: ${env.MODEL_DIR}/${env.TOKENIZER_NAME}_latest.json"
+            // Check if we should continue training from existing model
+            // Only use incremental training if:
+            // 1. FRESH_TRAINING is false (merge mode)
+            // 2. Existing model and tokenizer files exist
+            def shouldContinueTraining = !params.FRESH_TRAINING && 
+                                         fileExists("${env.MODEL_DIR}/${env.MODEL_NAME}_latest.keras") && 
+                                         fileExists("${env.MODEL_DIR}/${env.TOKENIZER_NAME}_latest.json")
+            
+            if (shouldContinueTraining) {
+                echo "🔄 Continuing training from existing model (incremental learning)..."
+                echo "   Existing model: ${env.MODEL_DIR}/${env.MODEL_NAME}_latest.keras"
+                echo "   Existing tokenizer: ${env.MODEL_DIR}/${env.TOKENIZER_NAME}_latest.json"
+                sh """
                     ${env.PYTHON} train_keyword_predictor.py \
                         --input ${env.CLEANED_DATASET} \
                         --model-output ${env.MODEL_DIR}/${env.MODEL_NAME}_v${env.MODEL_VERSION}_${env.MODEL_TIMESTAMP}.keras \
@@ -182,12 +186,14 @@ node {
                         echo "❌ ERROR: Model training failed!"
                         exit 1
                     }
-                else
-                    if [ "${params.FRESH_TRAINING}" = "true" ]; then
-                        echo "🆕 Training new model from scratch (fresh training mode)..."
-                    else
-                        echo "🆕 Training new model from scratch (no existing model found)..."
-                    fi
+                """
+            } else {
+                if (params.FRESH_TRAINING) {
+                    echo "🆕 Training new model from scratch (fresh training mode)..."
+                } else {
+                    echo "🆕 Training new model from scratch (no existing model found)..."
+                }
+                sh """
                     ${env.PYTHON} train_keyword_predictor.py \
                         --input ${env.CLEANED_DATASET} \
                         --model-output ${env.MODEL_DIR}/${env.MODEL_NAME}_v${env.MODEL_VERSION}_${env.MODEL_TIMESTAMP}.keras \
@@ -195,8 +201,8 @@ node {
                         echo "❌ ERROR: Model training failed!"
                         exit 1
                     }
-                fi
-            """
+                """
+            }
             echo "✅ Model training completed!"
         }
         
