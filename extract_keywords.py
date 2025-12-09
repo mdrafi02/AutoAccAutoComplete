@@ -447,16 +447,101 @@ def collect_all_tests(folder_path):
     return all_tests
 
 
+def extract_keywords_from_jsonl(jsonl_path):
+    """Extract keyword sequences from JSONL format dataset.
+    
+    Expected format:
+    {
+        "output": {
+            "dsl_output": "${var}=library.keyword    param1=value1    param2=value2\n..."
+        }
+    }
+    
+    Args:
+        jsonl_path: Path to JSONL JSON file
+        
+    Returns:
+        List of dicts with 'test_name' and 'keywords' keys
+    """
+    test_data = []
+    
+    if not os.path.exists(jsonl_path):
+        raise FileNotFoundError(f"JSONL file not found: {jsonl_path}")
+    
+    try:
+        with open(jsonl_path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        
+        # Handle both array and single object formats
+        if not isinstance(data, list):
+            data = [data]
+        
+        for idx, entry in enumerate(data, 1):
+            # Extract dsl_output from output field
+            output = entry.get("output", {})
+            dsl_output = output.get("dsl_output", "")
+            
+            if not dsl_output:
+                # Try alternative paths
+                dsl_output = entry.get("dsl_output", "")
+                if not dsl_output:
+                    continue
+            
+            # Parse DSL output to extract keyword sequences
+            # Format: ${var}=library.keyword    param1=value1    param2=value2
+            keywords = []
+            lines = dsl_output.strip().split("\n")
+            
+            for line in lines:
+                line = line.strip()
+                if not line:
+                    continue
+                
+                # Extract library.keyword from format: ${var}=library.keyword    ...
+                # Pattern: ${var}=library.keyword followed by spaces/tabs and params
+                match = re.match(r'\$\{[^}]+\}=([^\s\t]+)', line)
+                if match:
+                    keyword_full = match.group(1)
+                    # Normalize: lowercase and replace spaces with underscores
+                    keyword_normalized = re.sub(r"\s+", "_", keyword_full.lower().strip())
+                    if keyword_normalized:
+                        keywords.append(keyword_normalized)
+            
+            if keywords:
+                # Use input or instruction as test name, or generate one
+                test_name = entry.get("input", entry.get("instruction", f"entry_{idx}"))
+                test_data.append({
+                    "test_name": test_name,
+                    "keywords": keywords
+                })
+        
+        return test_data
+    
+    except json.JSONDecodeError as e:
+        print(f"JSON parsing error in {jsonl_path}: {e}")
+        return []
+    except Exception as e:
+        print(f"Error parsing {jsonl_path}: {e}")
+        return []
+
+
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
-        description="Extract keyword sequences from Robot Framework XML logs"
+        description="Extract keyword sequences from Robot Framework XML logs or JSONL format"
     )
     parser.add_argument(
         "--folder",
         "-f",
         type=str,
-        default="/home/administrator/RafiWork/AutoAccAutoComplete/data/xml_files/CLS_ROBOTS_RBAC_XML_FILES",
+        default=None,
         help="Folder containing XML files",
+    )
+    parser.add_argument(
+        "--jsonl",
+        "-j",
+        type=str,
+        default=None,
+        help="Path to JSONL JSON file (alternative to --folder)",
     )
     parser.add_argument(
         "--output",
@@ -480,8 +565,21 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     try:
-        new_data = collect_all_tests(args.folder)
-        print(f"\n✅ Extracted {len(new_data)} test cases from XML files.")
+        # Determine input source
+        if args.jsonl:
+            # Extract from JSONL format
+            print(f"📄 Extracting keywords from JSONL file: {args.jsonl}")
+            new_data = extract_keywords_from_jsonl(args.jsonl)
+            print(f"\n✅ Extracted {len(new_data)} test cases from JSONL file.")
+        elif args.folder:
+            # Extract from XML files (original functionality)
+            new_data = collect_all_tests(args.folder)
+            print(f"\n✅ Extracted {len(new_data)} test cases from XML files.")
+        else:
+            # Default: use folder if no arguments provided
+            default_folder = "/home/administrator/RafiWork/AutoAccAutoComplete/data/xml_files/CLS_ROBOTS_RBAC_XML_FILES"
+            new_data = collect_all_tests(default_folder)
+            print(f"\n✅ Extracted {len(new_data)} test cases from XML files.")
 
         # Handle append/merge modes
         if args.append or args.merge:
