@@ -167,32 +167,38 @@ node {
             // Only use incremental training if:
             // 1. FRESH_TRAINING is false (merge mode)
             // 2. Existing model and tokenizer files exist
-            def shouldContinueTraining = !params.FRESH_TRAINING && 
-                                         fileExists("${env.MODEL_DIR}/${env.MODEL_NAME}_latest.keras") && 
-                                         fileExists("${env.MODEL_DIR}/${env.TOKENIZER_NAME}_latest.json")
-            
-            if (shouldContinueTraining) {
-                echo "🔄 Continuing training from existing model (incremental learning)..."
-                echo "   Existing model: ${env.MODEL_DIR}/${env.MODEL_NAME}_latest.keras"
-                echo "   Existing tokenizer: ${env.MODEL_DIR}/${env.TOKENIZER_NAME}_latest.json"
-                sh """
-                    ${env.PYTHON} train_keyword_predictor.py \
-                        --input ${env.CLEANED_DATASET} \
-                        --model-output ${env.MODEL_DIR}/${env.MODEL_NAME}_v${env.MODEL_VERSION}_${env.MODEL_TIMESTAMP}.keras \
-                        --tokenizer-output ${env.TOKENIZER_OUTPUT} \
-                        --continue-training \
-                        --existing-model ${env.MODEL_DIR}/${env.MODEL_NAME}_latest.keras \
-                        --existing-tokenizer ${env.MODEL_DIR}/${env.TOKENIZER_NAME}_latest.json || {
-                        echo "❌ ERROR: Model training failed!"
-                        exit 1
-                    }
-                """
-            } else {
-                if (params.FRESH_TRAINING) {
-                    echo "🆕 Training new model from scratch (fresh training mode)..."
+            // Use nested if statements to avoid sandbox issues with def variable declarations
+            if (!params.FRESH_TRAINING) {
+                if (fileExists("${env.MODEL_DIR}/${env.MODEL_NAME}_latest.keras") && fileExists("${env.MODEL_DIR}/${env.TOKENIZER_NAME}_latest.json")) {
+                    echo "🔄 Continuing training from existing model (incremental learning)..."
+                    echo "   Existing model: ${env.MODEL_DIR}/${env.MODEL_NAME}_latest.keras"
+                    echo "   Existing tokenizer: ${env.MODEL_DIR}/${env.TOKENIZER_NAME}_latest.json"
+                    sh """
+                        ${env.PYTHON} train_keyword_predictor.py \
+                            --input ${env.CLEANED_DATASET} \
+                            --model-output ${env.MODEL_DIR}/${env.MODEL_NAME}_v${env.MODEL_VERSION}_${env.MODEL_TIMESTAMP}.keras \
+                            --tokenizer-output ${env.TOKENIZER_OUTPUT} \
+                            --continue-training \
+                            --existing-model ${env.MODEL_DIR}/${env.MODEL_NAME}_latest.keras \
+                            --existing-tokenizer ${env.MODEL_DIR}/${env.TOKENIZER_NAME}_latest.json || {
+                            echo "❌ ERROR: Model training failed!"
+                            exit 1
+                        }
+                    """
                 } else {
                     echo "🆕 Training new model from scratch (no existing model found)..."
+                    sh """
+                        ${env.PYTHON} train_keyword_predictor.py \
+                            --input ${env.CLEANED_DATASET} \
+                            --model-output ${env.MODEL_DIR}/${env.MODEL_NAME}_v${env.MODEL_VERSION}_${env.MODEL_TIMESTAMP}.keras \
+                            --tokenizer-output ${env.TOKENIZER_OUTPUT} || {
+                            echo "❌ ERROR: Model training failed!"
+                            exit 1
+                        }
+                    """
                 }
+            } else {
+                echo "🆕 Training new model from scratch (fresh training mode)..."
                 sh """
                     ${env.PYTHON} train_keyword_predictor.py \
                         --input ${env.CLEANED_DATASET} \
