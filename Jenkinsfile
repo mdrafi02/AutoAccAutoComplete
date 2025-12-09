@@ -3,6 +3,7 @@ properties([
         booleanParam(name: 'RUN_TRAINING', defaultValue: false, description: 'Run model training pipeline'),
         booleanParam(name: 'DEPLOY_MODEL', defaultValue: false, description: 'Deploy model to production'),
         booleanParam(name: 'FRESH_TRAINING', defaultValue: false, description: 'Train on new data only (ignore old data). Default: false (merge with old data)'),
+        booleanParam(name: 'EXTRACT_KEYWORDS', defaultValue: true, description: 'Extract keywords from XML files. If disabled, uses existing dataset file. Default: true'),
         stringParam(name: 'XML_FOLDER_PATH', defaultValue: '', description: 'Path to XML files folder (e.g., /path/to/xml_files or relative to workspace)')
     ]),
     // Schedule weekly training: Every Sunday at 2 AM (random minute to avoid load spikes)
@@ -88,43 +89,69 @@ node {
             // Create models directory
             sh "mkdir -p ${env.MODEL_DIR}"
             
-            // Check if XML data exists - fail stage if not available
-            sh """
-                if [ ! -d "${env.XML_FOLDER}" ] || [ -z "\$(ls -A ${env.XML_FOLDER} 2>/dev/null)" ]; then
-                    echo "❌ ERROR: XML folder is empty or doesn't exist: ${env.XML_FOLDER}"
-                    echo "ℹ️  To configure: Provide XML_FOLDER_PATH build parameter (e.g., /path/to/xml_files)"
-                    echo "ℹ️  Or set it as an environment variable in Jenkins job configuration"
-                    exit 1
-                fi
-            """
+            // Check if XML data exists - only if extraction is enabled
+            if (params.EXTRACT_KEYWORDS) {
+                sh """
+                    if [ ! -d "${env.XML_FOLDER}" ] || [ -z "\$(ls -A ${env.XML_FOLDER} 2>/dev/null)" ]; then
+                        echo "❌ ERROR: XML folder is empty or doesn't exist: ${env.XML_FOLDER}"
+                        echo "ℹ️  To configure: Provide XML_FOLDER_PATH build parameter (e.g., /path/to/xml_files)"
+                        echo "ℹ️  Or set it as an environment variable in Jenkins job configuration"
+                        exit 1
+                    fi
+                """
+                echo "✅ Preparation complete. XML folder: ${env.XML_FOLDER}"
+            } else {
+                // If extraction is disabled, check if dataset file exists
+                sh """
+                    if [ ! -f "${env.DATASET_OUTPUT}" ]; then
+                        echo "❌ ERROR: Dataset file not found: ${env.DATASET_OUTPUT}"
+                        echo "ℹ️  Either enable EXTRACT_KEYWORDS or ensure the dataset file exists"
+                        exit 1
+                    fi
+                    echo "✅ Using existing dataset file: ${env.DATASET_OUTPUT}"
+                """
+            }
             
             // Set tokenizer output path as environment variable
             env.TOKENIZER_OUTPUT = "${WORKSPACE}/tokenizer.json"
-            
-            echo "✅ Preparation complete. XML folder: ${env.XML_FOLDER}"
         }
         
-        stage('Extract Keywords') {
-            echo "📊 Extracting keywords from XML files..."
-            
-            if (params.FRESH_TRAINING) {
-                echo "🔄 Using fresh mode (new data only)..."
+        // Extract Keywords stage - conditional based on EXTRACT_KEYWORDS parameter
+        if (params.EXTRACT_KEYWORDS) {
+            stage('Extract Keywords') {
+                echo "📊 Extracting keywords from XML files..."
+                
+                if (params.FRESH_TRAINING) {
+                    echo "🔄 Using fresh mode (new data only)..."
+                    sh """
+                        ${env.PYTHON} extract_keywords.py --folder ${env.XML_FOLDER} --output ${env.DATASET_OUTPUT} || {
+                            echo "❌ ERROR: Keyword extraction failed!"
+                            exit 1
+                        }
+                    """
+                    echo "✅ Keyword extraction completed! (New data only, old data ignored)"
+                } else {
+                    echo "🔄 Using merge mode (preserve existing data)..."
+                    sh """
+                        ${env.PYTHON} extract_keywords.py --folder ${env.XML_FOLDER} --output ${env.DATASET_OUTPUT} --merge || {
+                            echo "❌ ERROR: Keyword extraction failed!"
+                            exit 1
+                        }
+                    """
+                    echo "✅ Keyword extraction completed! (Old data preserved, duplicates removed)"
+                }
+            }
+        } else {
+            stage('Skip Keyword Extraction') {
+                echo "⏭️  Skipping keyword extraction (EXTRACT_KEYWORDS=false)"
+                echo "📄 Using existing dataset file: ${env.DATASET_OUTPUT}"
                 sh """
-                    ${env.PYTHON} extract_keywords.py --folder ${env.XML_FOLDER} --output ${env.DATASET_OUTPUT} || {
-                        echo "❌ ERROR: Keyword extraction failed!"
+                    if [ ! -f "${env.DATASET_OUTPUT}" ]; then
+                        echo "❌ ERROR: Dataset file not found: ${env.DATASET_OUTPUT}"
                         exit 1
-                    }
+                    fi
+                    echo "✅ Dataset file found and ready for cleaning"
                 """
-                echo "✅ Keyword extraction completed! (New data only, old data ignored)"
-            } else {
-                echo "🔄 Using merge mode (preserve existing data)..."
-                sh """
-                    ${env.PYTHON} extract_keywords.py --folder ${env.XML_FOLDER} --output ${env.DATASET_OUTPUT} --merge || {
-                        echo "❌ ERROR: Keyword extraction failed!"
-                        exit 1
-                    }
-                """
-                echo "✅ Keyword extraction completed! (Old data preserved, duplicates removed)"
             }
         }
         
