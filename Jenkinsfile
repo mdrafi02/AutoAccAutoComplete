@@ -78,88 +78,101 @@ node {
         """
     }
     
-    // Weekly Training stage - conditional
+    // Weekly Training stages - conditional
     if (params.RUN_TRAINING == true || env.BUILD_CAUSE == 'TIMERTRIGGER') {
-        stage('Weekly Training') {
-            try {
-                echo "🚀 Starting weekly training pipeline..."
-                
-                // Create models directory
-                sh "mkdir -p ${env.MODEL_DIR}"
-                
-                // Check if XML data exists - fail stage if not available
-                sh """
-                    if [ ! -d "${env.XML_FOLDER}" ] || [ -z "\$(ls -A ${env.XML_FOLDER} 2>/dev/null)" ]; then
-                        echo "❌ ERROR: XML folder is empty or doesn't exist: ${env.XML_FOLDER}"
-                        echo "ℹ️  To configure: Provide XML_FOLDER_PATH build parameter (e.g., /path/to/xml_files)"
-                        echo "ℹ️  Or set it as an environment variable in Jenkins job configuration"
-                        exit 1
-                    fi
-                """
-                
-                // Set tokenizer output path as environment variable
-                env.TOKENIZER_OUTPUT = "${WORKSPACE}/tokenizer.json"
-                
-                // Run full training pipeline
-                sh """
-                    echo "📊 Step 1: Extracting keywords from XML files..."
-                    ${env.PYTHON} extract_keywords.py --folder ${env.XML_FOLDER} --output ${env.DATASET_OUTPUT} || {
-                        echo "❌ ERROR: Keyword extraction failed!"
-                        exit 1
-                    }
-                    
-                    echo "🧹 Step 2: Cleaning dataset..."
-                    ${env.PYTHON} clean_keyword_dataset.py --input ${env.DATASET_OUTPUT} --output ${env.CLEANED_DATASET} || {
-                        echo "❌ ERROR: Dataset cleaning failed!"
-                        exit 1
-                    }
-                    
-                    echo "🎯 Step 3: Inspecting dataset..."
-                    ${env.PYTHON} inspect_keyword_dataset.py --file ${env.CLEANED_DATASET} || true
-                    
-                    echo "🏋️  Step 4: Training model..."
-                    ${env.PYTHON} train_keyword_predictor.py \
-                        --input ${env.CLEANED_DATASET} \
-                        --model-output ${env.MODEL_DIR}/${env.MODEL_NAME}_v${env.MODEL_VERSION}_${env.MODEL_TIMESTAMP}.keras \
-                        --tokenizer-output ${env.TOKENIZER_OUTPUT} || {
-                        echo "❌ ERROR: Model training failed!"
-                        exit 1
-                    }
-                    
-                    echo "📦 Step 5: Copying model and tokenizer to latest..."
-                    # Verify model file exists
-                    if [ ! -f "${env.MODEL_DIR}/${env.MODEL_NAME}_v${env.MODEL_VERSION}_${env.MODEL_TIMESTAMP}.keras" ]; then
-                        echo "❌ ERROR: Model file not found after training!"
-                        exit 1
-                    fi
-                    
-                    # Verify tokenizer file exists
-                    if [ ! -f "${env.TOKENIZER_OUTPUT}" ]; then
-                        echo "❌ ERROR: Tokenizer file not found after training: ${env.TOKENIZER_OUTPUT}"
-                        exit 1
-                    fi
-                    
-                    cp ${env.MODEL_DIR}/${env.MODEL_NAME}_v${env.MODEL_VERSION}_${env.MODEL_TIMESTAMP}.keras ${env.MODEL_DIR}/${env.MODEL_NAME}_latest.keras
-                    cp ${env.TOKENIZER_OUTPUT} ${env.MODEL_DIR}/${env.TOKENIZER_NAME}_latest.json
-                    cp ${env.TOKENIZER_OUTPUT} ${env.MODEL_DIR}/${env.TOKENIZER_NAME}_v${env.MODEL_VERSION}_${env.MODEL_TIMESTAMP}.json
-                """
-                
-                echo "✅ Training completed successfully!"
-                
-                // Verify files exist before archiving
-                if (!fileExists("${env.MODEL_DIR}/${env.MODEL_NAME}_v${env.MODEL_VERSION}_${env.MODEL_TIMESTAMP}.keras")) {
-                    error("Model file not found: ${env.MODEL_DIR}/${env.MODEL_NAME}_v${env.MODEL_VERSION}_${env.MODEL_TIMESTAMP}.keras")
+        // Create models directory and validate inputs
+        stage('Prepare Training') {
+            echo "🚀 Starting weekly training pipeline..."
+            
+            // Create models directory
+            sh "mkdir -p ${env.MODEL_DIR}"
+            
+            // Check if XML data exists - fail stage if not available
+            sh """
+                if [ ! -d "${env.XML_FOLDER}" ] || [ -z "\$(ls -A ${env.XML_FOLDER} 2>/dev/null)" ]; then
+                    echo "❌ ERROR: XML folder is empty or doesn't exist: ${env.XML_FOLDER}"
+                    echo "ℹ️  To configure: Provide XML_FOLDER_PATH build parameter (e.g., /path/to/xml_files)"
+                    echo "ℹ️  Or set it as an environment variable in Jenkins job configuration"
+                    exit 1
+                fi
+            """
+            
+            // Set tokenizer output path as environment variable
+            env.TOKENIZER_OUTPUT = "${WORKSPACE}/tokenizer.json"
+            
+            echo "✅ Preparation complete. XML folder: ${env.XML_FOLDER}"
+        }
+        
+        stage('Extract Keywords') {
+            echo "📊 Extracting keywords from XML files..."
+            sh """
+                ${env.PYTHON} extract_keywords.py --folder ${env.XML_FOLDER} --output ${env.DATASET_OUTPUT} || {
+                    echo "❌ ERROR: Keyword extraction failed!"
+                    exit 1
                 }
-                if (!fileExists("${env.MODEL_DIR}/${env.TOKENIZER_NAME}_v${env.MODEL_VERSION}_${env.MODEL_TIMESTAMP}.json")) {
-                    error("Tokenizer file not found: ${env.MODEL_DIR}/${env.TOKENIZER_NAME}_v${env.MODEL_VERSION}_${env.MODEL_TIMESTAMP}.json")
+            """
+            echo "✅ Keyword extraction completed!"
+        }
+        
+        stage('Clean Dataset') {
+            echo "🧹 Cleaning dataset..."
+            sh """
+                ${env.PYTHON} clean_keyword_dataset.py --input ${env.DATASET_OUTPUT} --output ${env.CLEANED_DATASET} || {
+                    echo "❌ ERROR: Dataset cleaning failed!"
+                    exit 1
                 }
-                
-                // Archive model artifacts (use relative paths from workspace)
-                archiveArtifacts artifacts: "models/${env.MODEL_NAME}_v${env.MODEL_VERSION}_${env.MODEL_TIMESTAMP}.keras, models/${env.TOKENIZER_NAME}_v${env.MODEL_VERSION}_${env.MODEL_TIMESTAMP}.json", allowEmptyArchive: false
-            } catch (Exception e) {
-                echo "❌ Training failed: ${e.getMessage()}"
-                throw e
+            """
+            echo "✅ Dataset cleaning completed!"
+        }
+        
+        stage('Inspect Dataset') {
+            echo "🎯 Inspecting dataset statistics..."
+            sh """
+                ${env.PYTHON} inspect_keyword_dataset.py --file ${env.CLEANED_DATASET} || true
+            """
+            echo "✅ Dataset inspection completed!"
+        }
+        
+        stage('Train Model') {
+            echo "🏋️  Training LSTM model..."
+            sh """
+                ${env.PYTHON} train_keyword_predictor.py \
+                    --input ${env.CLEANED_DATASET} \
+                    --model-output ${env.MODEL_DIR}/${env.MODEL_NAME}_v${env.MODEL_VERSION}_${env.MODEL_TIMESTAMP}.keras \
+                    --tokenizer-output ${env.TOKENIZER_OUTPUT} || {
+                    echo "❌ ERROR: Model training failed!"
+                    exit 1
+                }
+            """
+            echo "✅ Model training completed!"
+        }
+        
+        stage('Archive Models') {
+            echo "📦 Archiving model and tokenizer..."
+            
+            // Verify model file exists
+            if (!fileExists("${env.MODEL_DIR}/${env.MODEL_NAME}_v${env.MODEL_VERSION}_${env.MODEL_TIMESTAMP}.keras")) {
+                error("Model file not found: ${env.MODEL_DIR}/${env.MODEL_NAME}_v${env.MODEL_VERSION}_${env.MODEL_TIMESTAMP}.keras")
             }
+            
+            // Verify tokenizer file exists
+            if (!fileExists("${env.TOKENIZER_OUTPUT}")) {
+                error("Tokenizer file not found after training: ${env.TOKENIZER_OUTPUT}")
+            }
+            
+            sh """
+                # Copy to latest versions
+                cp ${env.MODEL_DIR}/${env.MODEL_NAME}_v${env.MODEL_VERSION}_${env.MODEL_TIMESTAMP}.keras ${env.MODEL_DIR}/${env.MODEL_NAME}_latest.keras
+                cp ${env.TOKENIZER_OUTPUT} ${env.MODEL_DIR}/${env.TOKENIZER_NAME}_latest.json
+                cp ${env.TOKENIZER_OUTPUT} ${env.MODEL_DIR}/${env.TOKENIZER_NAME}_v${env.MODEL_VERSION}_${env.MODEL_TIMESTAMP}.json
+                
+                echo "✅ Model and tokenizer copied to latest versions"
+            """
+            
+            // Archive model artifacts (use relative paths from workspace)
+            archiveArtifacts artifacts: "models/${env.MODEL_NAME}_v${env.MODEL_VERSION}_${env.MODEL_TIMESTAMP}.keras, models/${env.TOKENIZER_NAME}_v${env.MODEL_VERSION}_${env.MODEL_TIMESTAMP}.json", allowEmptyArchive: false
+            
+            echo "✅ Model archiving completed!"
         }
         
         // Convert to TensorFlow.js - only if training was successful
