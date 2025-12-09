@@ -1,0 +1,23 @@
+{
+  "description": "Keyword sequence rules to enforce domain constraints",
+  "version": "1.0.0",
+  "comment": "Add your rules below. See KEYWORD_RULES.md for documentation.",
+  
+  "required_following": {
+    "comment": "Keywords that MUST follow a given keyword. Example: 'login1.login_user': ['login1.authenticate']"
+  },
+  
+  "preferred_following": {
+    "comment": "Keywords that should be boosted in probability. Example: 'login1.authenticate': ['login1.verify_session']"
+  },
+  
+  "blocked_following": {
+    "comment": "Keywords that should NEVER follow a given keyword. Example: 'login1.logout': ['login1.login_user']"
+  },
+  
+  "sequence_patterns": {
+    "comment": "Multi-keyword sequence patterns. Example: [{'after': ['kw1', 'kw2'], 'then': 'kw3'}]",
+    "patterns": []
+  }
+}
+

@@ -19,6 +19,7 @@ from predict_keywords_siva import (
     predict_next_keyword,
     predict_next_keyword_with_depth,
 )
+from keyword_rules import KeywordRules
 
 DEFAULT_MODEL_PATH = "keyword_predictor.keras"
 DEFAULT_TOKENIZER_PATH = "tokenizer.json"
@@ -43,6 +44,7 @@ app.add_middleware(
 model = None
 tokenizer = None
 context_size = None
+keyword_rules = None
 
 
 # Request/Response models
@@ -132,6 +134,30 @@ def format_hierarchical_predictions(hierarchical_data):
     return results
 
 
+def apply_rules_to_hierarchical(hierarchical_data, context_keywords, rules):
+    """Apply rules to hierarchical predictions recursively."""
+    results = []
+    for pred in hierarchical_data:
+        # Apply rules to current level
+        current_predictions = [(pred["keyword"], pred["probability"])]
+        modified = rules.apply_rules(current_predictions, context_keywords)
+
+        result = {
+            "keyword": modified[0][0] if modified else pred["keyword"],
+            "probability": modified[0][1] if modified else pred["probability"],
+        }
+
+        # Recursively apply to next level
+        if "next_predictions" in pred and pred["next_predictions"]:
+            new_context = context_keywords + [result["keyword"]]
+            result["next_predictions"] = apply_rules_to_hierarchical(
+                pred["next_predictions"], new_context, rules
+            )
+
+        results.append(result)
+    return results
+
+
 @app.post("/predict", response_model=PredictResponse)
 async def predict(request: PredictRequest):
     """
@@ -175,11 +201,19 @@ async def predict(request: PredictRequest):
                 top_k=request.top_k,
                 depth=request.depth,
             )
+            # Apply rules to hierarchical predictions
+            if keyword_rules:
+                hierarchical_results = apply_rules_to_hierarchical(
+                    hierarchical_results, context_keywords, keyword_rules
+                )
             predictions = format_hierarchical_predictions(hierarchical_results)
         else:
             results = predict_next_keyword(
                 model, tokenizer, context_keywords, top_k=request.top_k
             )
+            # Apply rules to predictions
+            if keyword_rules:
+                results = keyword_rules.apply_rules(results, context_keywords)
             predictions = [
                 PredictionResult(keyword=kw, probability=prob) for kw, prob in results
             ]
@@ -216,9 +250,9 @@ async def model_info():
     }
 
 
-def load_model(model_path: str, tokenizer_path: str):
+def load_model(model_path: str, tokenizer_path: str, rules_file: Optional[str] = None):
     """Load model and tokenizer into global variables."""
-    global model, tokenizer, context_size
+    global model, tokenizer, context_size, keyword_rules
 
     try:
         print(f"Loading model from {model_path}...")
@@ -227,6 +261,12 @@ def load_model(model_path: str, tokenizer_path: str):
         print(f"✅ Model loaded successfully!")
         print(f"   Context size: {context_size}")
         print(f"   Vocabulary size: {len(tokenizer.word_index) + 1}")
+
+        # Load keyword rules
+        if rules_file is None:
+            rules_file = os.getenv("KEYWORD_RULES_FILE", "keyword_rules.json")
+        keyword_rules = KeywordRules(rules_file)
+
         return True
     except Exception as e:
         print(f"❌ Error loading model: {e}")
@@ -238,8 +278,9 @@ async def startup_event():
     """Load model on server startup."""
     model_path = os.getenv("MODEL_PATH", DEFAULT_MODEL_PATH)
     tokenizer_path = os.getenv("TOKENIZER_PATH", DEFAULT_TOKENIZER_PATH)
+    rules_file = os.getenv("KEYWORD_RULES_FILE", "keyword_rules.json")
 
-    if not load_model(model_path, tokenizer_path):
+    if not load_model(model_path, tokenizer_path, rules_file):
         print(
             "⚠️  Warning: Model not loaded. API will return 503 errors until model is loaded."
         )
@@ -266,12 +307,20 @@ if __name__ == "__main__":
     parser.add_argument(
         "--reload", action="store_true", help="Enable auto-reload for development"
     )
+    parser.add_argument(
+        "--rules",
+        "-r",
+        type=str,
+        default="keyword_rules.json",
+        help="Path to keyword rules JSON file",
+    )
 
     args = parser.parse_args()
 
     # Set environment variables for startup
     os.environ["MODEL_PATH"] = args.model
     os.environ["TOKENIZER_PATH"] = args.tokenizer
+    os.environ["KEYWORD_RULES_FILE"] = args.rules
 
     print("=" * 70)
     print(" " * 20 + "🚀 Starting Keyword Predictor API")
