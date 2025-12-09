@@ -5,9 +5,11 @@ import argparse
 import os
 from tensorflow.keras.preprocessing.text import tokenizer_from_json
 from tensorflow.keras.preprocessing.sequence import pad_sequences
+from keyword_rules import KeywordRules
 
 DEFAULT_MODEL_PATH = "keyword_predictor.keras"
 DEFAULT_TOKENIZER_PATH = "tokenizer.json"
+DEFAULT_RULES_FILE = "keyword_rules.json"
 
 
 def load_model_and_tokenizer(model_path, tokenizer_path):
@@ -73,9 +75,23 @@ def predict_next_keyword(model, tokenizer, context_keywords, top_k=3):
         raise RuntimeError(f"Error during prediction: {e}")
 
 
-def cli_loop(model, tokenizer):
+def cli_loop(model, tokenizer, rules_file=None):
     """Interactive CLI loop for keyword prediction."""
     context_size = model.input_shape[1]
+
+    # Load keyword rules if available
+    keyword_rules = None
+    try:
+        keyword_rules = KeywordRules(rules_file)
+        if (
+            keyword_rules.required_following
+            or keyword_rules.preferred_following
+            or keyword_rules.blocked_following
+        ):
+            print("✅ Keyword rules loaded and will be applied to predictions")
+    except Exception:
+        # Rules file not found or invalid - continue without rules
+        pass
 
     print("=" * 60)
     print(" Neural Keyword Predictor (CLI)")
@@ -106,6 +122,11 @@ def cli_loop(model, tokenizer):
                 continue
 
             results = predict_next_keyword(model, tokenizer, context_keywords)
+
+            # Apply rules if available
+            if keyword_rules:
+                results = keyword_rules.apply_rules(results, context_keywords)
+
             print(
                 f"\nTop predictions (based on last {min(len(context_keywords), context_size)} keyword(s)):"
             )
@@ -136,6 +157,13 @@ if __name__ == "__main__":
         default=DEFAULT_TOKENIZER_PATH,
         help="Path to tokenizer JSON file",
     )
+    parser.add_argument(
+        "--rules",
+        "-r",
+        type=str,
+        default=DEFAULT_RULES_FILE,
+        help="Path to keyword rules JSON file (optional)",
+    )
 
     args = parser.parse_args()
 
@@ -143,7 +171,7 @@ if __name__ == "__main__":
         print("Loading model and tokenizer...")
         model, tokenizer = load_model_and_tokenizer(args.model, args.tokenizer)
         print("✅ Model and tokenizer loaded successfully!\n")
-        cli_loop(model, tokenizer)
+        cli_loop(model, tokenizer, rules_file=args.rules)
     except Exception as e:
         print(f"❌ Error: {e}")
         exit(1)

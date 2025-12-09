@@ -5,9 +5,11 @@ import argparse
 import os
 from tensorflow.keras.preprocessing.text import tokenizer_from_json
 from tensorflow.keras.preprocessing.sequence import pad_sequences
+from keyword_rules import KeywordRules
 
 DEFAULT_MODEL_PATH = "keyword_predictor.keras"
 DEFAULT_TOKENIZER_PATH = "tokenizer.json"
+DEFAULT_RULES_FILE = "keyword_rules.json"
 
 
 def load_model_and_tokenizer(model_path, tokenizer_path):
@@ -151,6 +153,33 @@ def predict_next_keyword_with_depth(
     return results
 
 
+def apply_rules_to_hierarchical_predictions(hierarchical_data, context_keywords, rules):
+    """Apply rules to hierarchical predictions recursively."""
+    if not rules:
+        return hierarchical_data
+
+    results = []
+    for pred in hierarchical_data:
+        # Apply rules to current level
+        current_predictions = [(pred["keyword"], pred["probability"])]
+        modified = rules.apply_rules(current_predictions, context_keywords)
+
+        result = {
+            "keyword": modified[0][0] if modified else pred["keyword"],
+            "probability": modified[0][1] if modified else pred["probability"],
+        }
+
+        # Recursively apply to next level
+        if "next_predictions" in pred and pred["next_predictions"]:
+            new_context = context_keywords + [result["keyword"]]
+            result["next_predictions"] = apply_rules_to_hierarchical_predictions(
+                pred["next_predictions"], new_context, rules
+            )
+
+        results.append(result)
+    return results
+
+
 def display_hierarchical_predictions(predictions, level=0, max_level=None):
     """
     Display hierarchical predictions in a tree-like format.
@@ -186,13 +215,27 @@ def display_hierarchical_predictions(predictions, level=0, max_level=None):
             )
 
 
-def cli_loop(model, tokenizer, depth=1):
+def cli_loop(model, tokenizer, depth=1, rules_file=None):
     """Interactive CLI loop for keyword prediction with sequence history and depth-based prediction."""
     context_size = model.input_shape[1]
     sequence_history = (
         []
     )  # Store the full sequence of keywords for sequential prediction
     current_predictions = []  # Store current predictions for user selection
+
+    # Load keyword rules if available
+    keyword_rules = None
+    try:
+        keyword_rules = KeywordRules(rules_file)
+        if (
+            keyword_rules.required_following
+            or keyword_rules.preferred_following
+            or keyword_rules.blocked_following
+        ):
+            print("✅ Keyword rules loaded and will be applied to predictions")
+    except Exception:
+        # Rules file not found or invalid - continue without rules
+        pass
 
     print("=" * 70)
     print(" " * 15 + "🤖 Neural Keyword Predictor")
@@ -304,6 +347,15 @@ def cli_loop(model, tokenizer, depth=1):
                     hierarchical_predictions = predict_next_keyword_with_depth(
                         model, tokenizer, context_keywords, top_k=3, depth=depth
                     )
+                    # Apply rules if available
+                    if keyword_rules:
+                        hierarchical_predictions = (
+                            apply_rules_to_hierarchical_predictions(
+                                hierarchical_predictions,
+                                context_keywords,
+                                keyword_rules,
+                            )
+                        )
                     current_predictions = [
                         (p["keyword"], p["probability"])
                         for p in hierarchical_predictions
@@ -319,6 +371,11 @@ def cli_loop(model, tokenizer, depth=1):
                     current_predictions = predict_next_keyword(
                         model, tokenizer, context_keywords
                     )
+                    # Apply rules if available
+                    if keyword_rules:
+                        current_predictions = keyword_rules.apply_rules(
+                            current_predictions, context_keywords
+                        )
                     print(
                         f"\n📊 MODEL RESPONSE - Top {len(current_predictions)} predictions:"
                     )
@@ -357,6 +414,15 @@ def cli_loop(model, tokenizer, depth=1):
                     hierarchical_predictions = predict_next_keyword_with_depth(
                         model, tokenizer, context_keywords, top_k=3, depth=depth
                     )
+                    # Apply rules if available
+                    if keyword_rules:
+                        hierarchical_predictions = (
+                            apply_rules_to_hierarchical_predictions(
+                                hierarchical_predictions,
+                                context_keywords,
+                                keyword_rules,
+                            )
+                        )
                     current_predictions = [
                         (p["keyword"], p["probability"])
                         for p in hierarchical_predictions
@@ -372,6 +438,11 @@ def cli_loop(model, tokenizer, depth=1):
                     current_predictions = predict_next_keyword(
                         model, tokenizer, context_keywords
                     )
+                    # Apply rules if available
+                    if keyword_rules:
+                        current_predictions = keyword_rules.apply_rules(
+                            current_predictions, context_keywords
+                        )
                     print(
                         f"\n📊 MODEL RESPONSE - Top {len(current_predictions)} predictions:"
                     )
@@ -410,6 +481,15 @@ def cli_loop(model, tokenizer, depth=1):
                     hierarchical_predictions = predict_next_keyword_with_depth(
                         model, tokenizer, context_keywords, top_k=3, depth=depth
                     )
+                    # Apply rules if available
+                    if keyword_rules:
+                        hierarchical_predictions = (
+                            apply_rules_to_hierarchical_predictions(
+                                hierarchical_predictions,
+                                context_keywords,
+                                keyword_rules,
+                            )
+                        )
                     current_predictions = [
                         (p["keyword"], p["probability"])
                         for p in hierarchical_predictions
@@ -425,6 +505,11 @@ def cli_loop(model, tokenizer, depth=1):
                     current_predictions = predict_next_keyword(
                         model, tokenizer, context_keywords
                     )
+                    # Apply rules if available
+                    if keyword_rules:
+                        current_predictions = keyword_rules.apply_rules(
+                            current_predictions, context_keywords
+                        )
                     print(
                         f"\n📊 MODEL RESPONSE - Top {len(current_predictions)} predictions:"
                     )
@@ -470,6 +555,13 @@ if __name__ == "__main__":
         default=1,
         help="Depth for hierarchical prediction (default: 1, shows only current level)",
     )
+    parser.add_argument(
+        "--rules",
+        "-r",
+        type=str,
+        default=DEFAULT_RULES_FILE,
+        help="Path to keyword rules JSON file (optional)",
+    )
 
     args = parser.parse_args()
 
@@ -481,7 +573,7 @@ if __name__ == "__main__":
         print("Loading model and tokenizer...")
         model, tokenizer = load_model_and_tokenizer(args.model, args.tokenizer)
         print("✅ Model and tokenizer loaded successfully!\n")
-        cli_loop(model, tokenizer, depth=args.depth)
+        cli_loop(model, tokenizer, depth=args.depth, rules_file=args.rules)
     except Exception as e:
         print(f"❌ Error: {e}")
         exit(1)
