@@ -125,15 +125,15 @@ def train_model(
 
         # Initialize word_docs for existing vocabulary (required for fit_on_texts to work)
         # word_docs tracks document counts and might not be properly initialized from JSON
-        if not hasattr(tokenizer, 'word_docs') or tokenizer.word_docs is None:
+        if not hasattr(tokenizer, "word_docs") or tokenizer.word_docs is None:
             tokenizer.word_docs = {}
-        
+
         # Initialize word_docs for all existing words in word_index
         # This prevents KeyError when fit_on_texts tries to increment counts
         for word in tokenizer.word_index.keys():
             if word not in tokenizer.word_docs:
                 tokenizer.word_docs[word] = 0
-        
+
         # Collect all words from new sequences to pre-initialize word_docs
         # This ensures word_docs has entries for all words before fit_on_texts runs
         all_words_in_sequences = set()
@@ -145,7 +145,7 @@ def train_model(
             else:
                 continue
             all_words_in_sequences.update(words)
-        
+
         # Pre-initialize word_docs for all words that will be encountered
         # This prevents KeyError in fit_on_texts when it tries to do word_docs[w] += 1
         for word in all_words_in_sequences:
