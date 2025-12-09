@@ -105,24 +105,26 @@ node {
         
         stage('Extract Keywords') {
             echo "📊 Extracting keywords from XML files..."
+            echo "🔄 Using merge mode to preserve existing data..."
             sh """
-                ${env.PYTHON} extract_keywords.py --folder ${env.XML_FOLDER} --output ${env.DATASET_OUTPUT} || {
+                ${env.PYTHON} extract_keywords.py --folder ${env.XML_FOLDER} --output ${env.DATASET_OUTPUT} --merge || {
                     echo "❌ ERROR: Keyword extraction failed!"
                     exit 1
                 }
             """
-            echo "✅ Keyword extraction completed!"
+            echo "✅ Keyword extraction completed! (Old data preserved, duplicates removed)"
         }
         
         stage('Clean Dataset') {
             echo "🧹 Cleaning dataset..."
+            echo "🔄 Using append mode to preserve existing cleaned data..."
             sh """
-                ${env.PYTHON} clean_keyword_dataset.py --input ${env.DATASET_OUTPUT} --output ${env.CLEANED_DATASET} || {
+                ${env.PYTHON} clean_keyword_dataset.py --input ${env.DATASET_OUTPUT} --output ${env.CLEANED_DATASET} --append || {
                     echo "❌ ERROR: Dataset cleaning failed!"
                     exit 1
                 }
             """
-            echo "✅ Dataset cleaning completed!"
+            echo "✅ Dataset cleaning completed! (Old cleaned data preserved, duplicates removed)"
         }
         
         stage('Inspect Dataset') {
@@ -135,14 +137,33 @@ node {
         
         stage('Train Model') {
             echo "🏋️  Training LSTM model..."
+            
             sh """
-                ${env.PYTHON} train_keyword_predictor.py \
-                    --input ${env.CLEANED_DATASET} \
-                    --model-output ${env.MODEL_DIR}/${env.MODEL_NAME}_v${env.MODEL_VERSION}_${env.MODEL_TIMESTAMP}.keras \
-                    --tokenizer-output ${env.TOKENIZER_OUTPUT} || {
-                    echo "❌ ERROR: Model training failed!"
-                    exit 1
-                }
+                # Check if we should continue training from existing model
+                if [ -f "${env.MODEL_DIR}/${env.MODEL_NAME}_latest.keras" ] && [ -f "${env.MODEL_DIR}/${env.TOKENIZER_NAME}_latest.json" ]; then
+                    echo "🔄 Continuing training from existing model (incremental learning)..."
+                    echo "   Existing model: ${env.MODEL_DIR}/${env.MODEL_NAME}_latest.keras"
+                    echo "   Existing tokenizer: ${env.MODEL_DIR}/${env.TOKENIZER_NAME}_latest.json"
+                    ${env.PYTHON} train_keyword_predictor.py \
+                        --input ${env.CLEANED_DATASET} \
+                        --model-output ${env.MODEL_DIR}/${env.MODEL_NAME}_v${env.MODEL_VERSION}_${env.MODEL_TIMESTAMP}.keras \
+                        --tokenizer-output ${env.TOKENIZER_OUTPUT} \
+                        --continue-training \
+                        --existing-model ${env.MODEL_DIR}/${env.MODEL_NAME}_latest.keras \
+                        --existing-tokenizer ${env.MODEL_DIR}/${env.TOKENIZER_NAME}_latest.json || {
+                        echo "❌ ERROR: Model training failed!"
+                        exit 1
+                    }
+                else
+                    echo "🆕 Training new model from scratch..."
+                    ${env.PYTHON} train_keyword_predictor.py \
+                        --input ${env.CLEANED_DATASET} \
+                        --model-output ${env.MODEL_DIR}/${env.MODEL_NAME}_v${env.MODEL_VERSION}_${env.MODEL_TIMESTAMP}.keras \
+                        --tokenizer-output ${env.TOKENIZER_OUTPUT} || {
+                        echo "❌ ERROR: Model training failed!"
+                        exit 1
+                    }
+                fi
             """
             echo "✅ Model training completed!"
         }
