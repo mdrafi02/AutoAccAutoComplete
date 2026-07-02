@@ -1,0 +1,502 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Robot Framework Editor - Notepad Style</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Courier New', monospace;
+            background: #1e1e1e;
+            color: #d4d4d4;
+            height: 100vh;
+            overflow: hidden;
+        }
+        
+        .editor-container {
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+        }
+        
+        .editor-header {
+            background: #2d2d2d;
+            padding: 10px 20px;
+            border-bottom: 1px solid #3e3e3e;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .editor-title {
+            color: #ffffff;
+            font-size: 14px;
+            font-weight: 600;
+        }
+        
+        .editor-status {
+            color: #858585;
+            font-size: 12px;
+        }
+        
+        .editor-wrapper {
+            flex: 1;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        #editor {
+            width: 100%;
+            height: 100%;
+            padding: 20px;
+            background: #1e1e1e;
+            color: #d4d4d4;
+            border: none;
+            outline: none;
+            font-family: 'Courier New', monospace;
+            font-size: 14px;
+            line-height: 1.6;
+            resize: none;
+            tab-size: 4;
+            white-space: pre;
+            overflow-y: auto;
+        }
+        
+        #editor::placeholder {
+            color: #858585;
+        }
+        
+        /* Autocomplete dropdown */
+        .autocomplete-dropdown {
+            position: absolute;
+            background: #252526;
+            border: 1px solid #3e3e3e;
+            border-radius: 4px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+            max-height: 300px;
+            overflow-y: auto;
+            z-index: 1000;
+            min-width: 400px;
+            display: none;
+        }
+        
+        .autocomplete-item {
+            padding: 10px 15px;
+            cursor: pointer;
+            border-bottom: 1px solid #3e3e3e;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .autocomplete-item:last-child {
+            border-bottom: none;
+        }
+        
+        .autocomplete-item:hover,
+        .autocomplete-item.selected {
+            background: #2a2d2e;
+        }
+        
+        .autocomplete-keyword {
+            color: #4ec9b0;
+            font-weight: 600;
+            font-family: 'Courier New', monospace;
+        }
+        
+        .autocomplete-meta {
+            font-size: 11px;
+            color: #858585;
+            display: flex;
+            gap: 10px;
+        }
+        
+        .autocomplete-confidence {
+            background: #0e639c;
+            color: white;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 10px;
+        }
+        
+        /* Next keyword suggestions */
+        .next-keywords-panel {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: #252526;
+            border-top: 1px solid #3e3e3e;
+            padding: 10px 20px;
+            display: none;
+            max-height: 150px;
+            overflow-y: auto;
+        }
+        
+        .next-keywords-title {
+            font-size: 11px;
+            color: #858585;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+        }
+        
+        .next-keywords-list {
+            display: flex;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        
+        .next-keyword-badge {
+            background: #37373d;
+            border: 1px solid #3e3e3e;
+            padding: 6px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            color: #4ec9b0;
+            transition: all 0.2s;
+        }
+        
+        .next-keyword-badge:hover {
+            background: #2a2d2e;
+            border-color: #4ec9b0;
+        }
+        
+        /* Scrollbar styling */
+        #editor::-webkit-scrollbar,
+        .autocomplete-dropdown::-webkit-scrollbar,
+        .next-keywords-panel::-webkit-scrollbar {
+            width: 10px;
+        }
+        
+        #editor::-webkit-scrollbar-track,
+        .autocomplete-dropdown::-webkit-scrollbar-track,
+        .next-keywords-panel::-webkit-scrollbar-track {
+            background: #1e1e1e;
+        }
+        
+        #editor::-webkit-scrollbar-thumb,
+        .autocomplete-dropdown::-webkit-scrollbar-thumb,
+        .next-keywords-panel::-webkit-scrollbar-thumb {
+            background: #424242;
+            border-radius: 5px;
+        }
+        
+        #editor::-webkit-scrollbar-thumb:hover,
+        .autocomplete-dropdown::-webkit-scrollbar-thumb:hover,
+        .next-keywords-panel::-webkit-scrollbar-thumb:hover {
+            background: #4e4e4e;
+        }
+    </style>
+</head>
+<body>
+    <div class="editor-container">
+        <div class="editor-header">
+            <div class="editor-title">Robot Framework Test Case Editor</div>
+            <div class="editor-status" id="status">Ready</div>
+        </div>
+        
+        <div class="editor-wrapper">
+            <textarea 
+                id="editor" 
+                placeholder="Start typing your Robot Framework keywords..."
+                spellcheck="false"
+            ></textarea>
+            
+            <div id="autocomplete-dropdown" class="autocomplete-dropdown"></div>
+            
+            <div id="next-keywords-panel" class="next-keywords-panel">
+                <div class="next-keywords-title">💡 Suggested Next Keywords:</div>
+                <div id="next-keywords-list" class="next-keywords-list"></div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/static/js/robot_keyword_suggestions.js"></script>
+    
+    <script>
+        // Initialize
+        const suggester = new KeywordSuggester('http://localhost:5000/api');
+        const editor = document.getElementById('editor');
+        const autocompleteDropdown = document.getElementById('autocomplete-dropdown');
+        const nextKeywordsPanel = document.getElementById('next-keywords-panel');
+        const nextKeywordsList = document.getElementById('next-keywords-list');
+        const status = document.getElementById('status');
+        
+        let autocompleteTimeout;
+        let selectedIndex = -1;
+        let currentSuggestions = [];
+        let currentAutocomplete = [];
+        
+        // Get current line and cursor position
+        function getCurrentLine() {
+            const text = editor.value;
+            const cursorPos = editor.selectionStart;
+            const textBeforeCursor = text.substring(0, cursorPos);
+            const lines = textBeforeCursor.split('\n');
+            return lines[lines.length - 1];
+        }
+        
+        // Get all previous keywords (from previous lines)
+        function getPreviousKeywords() {
+            const text = editor.value;
+            const cursorPos = editor.selectionStart;
+            const textBeforeCursor = text.substring(0, cursorPos);
+            const lines = textBeforeCursor.split('\n').filter(line => line.trim());
+            
+            // Get keywords from previous lines (not current line)
+            const keywords = [];
+            for (let i = 0; i < lines.length - 1; i++) {
+                const line = lines[i].trim();
+                if (line) {
+                    keywords.push(line);
+                }
+            }
+            return keywords;
+        }
+        
+        // Show autocomplete
+        function showAutocomplete(suggestions, position) {
+            if (suggestions.length === 0) {
+                hideAutocomplete();
+                return;
+            }
+            
+            currentAutocomplete = suggestions;
+            selectedIndex = -1;
+            
+            autocompleteDropdown.innerHTML = suggestions.map((sug, index) => `
+                <div class="autocomplete-item ${index === 0 ? 'selected' : ''}" data-index="${index}">
+                    <span class="autocomplete-keyword">${escapeHtml(sug.keyword)}</span>
+                    <div class="autocomplete-meta">
+                        <span>${sug.frequency || sug.usage_count || 0} uses</span>
+                        ${sug.confidence ? `<span class="autocomplete-confidence">${sug.confidence}%</span>` : ''}
+                    </div>
+                </div>
+            `).join('');
+            
+            autocompleteDropdown.style.display = 'block';
+            updateAutocompletePosition(position);
+        }
+        
+        // Update autocomplete position (near cursor)
+        function updateAutocompletePosition(position) {
+            // Simple positioning - show below editor
+            // In a real implementation, you'd calculate cursor position
+            autocompleteDropdown.style.top = 'auto';
+            autocompleteDropdown.style.bottom = '60px';
+            autocompleteDropdown.style.left = '20px';
+        }
+        
+        // Hide autocomplete
+        function hideAutocomplete() {
+            autocompleteDropdown.style.display = 'none';
+            selectedIndex = -1;
+            currentAutocomplete = [];
+        }
+        
+        // Select autocomplete item
+        function selectAutocomplete(index) {
+            if (index < 0 || index >= currentAutocomplete.length) return;
+            
+            const suggestion = currentAutocomplete[index];
+            const currentLine = getCurrentLine();
+            const cursorPos = editor.selectionStart;
+            const textBeforeCursor = editor.value.substring(0, cursorPos);
+            const textAfterCursor = editor.value.substring(cursorPos);
+            
+            // Find the start of current word
+            const lineStart = textBeforeCursor.lastIndexOf('\n') + 1;
+            const currentWordStart = Math.max(
+                lineStart,
+                textBeforeCursor.lastIndexOf(' ') + 1,
+                textBeforeCursor.lastIndexOf('\t') + 1
+            );
+            
+            // Replace current word with suggestion
+            const beforeWord = editor.value.substring(0, currentWordStart);
+            const afterWord = textAfterCursor;
+            
+            editor.value = beforeWord + suggestion.keyword + afterWord;
+            editor.setSelectionRange(
+                currentWordStart + suggestion.keyword.length,
+                currentWordStart + suggestion.keyword.length
+            );
+            
+            hideAutocomplete();
+            loadNextKeywords();
+        }
+        
+        // Load next keyword suggestions
+        async function loadNextKeywords() {
+            const previousKeywords = getPreviousKeywords();
+            const currentLine = getCurrentLine().trim();
+            
+            // If current line has a complete keyword, include it
+            const keywordsForContext = currentLine ? 
+                [...previousKeywords, currentLine] : 
+                previousKeywords;
+            
+            if (keywordsForContext.length === 0) {
+                nextKeywordsPanel.style.display = 'none';
+                return;
+            }
+            
+            try {
+                status.textContent = 'Loading suggestions...';
+                const suggestions = await suggester.getNextKeywords(keywordsForContext, 3);
+                
+                if (suggestions.length === 0) {
+                    nextKeywordsPanel.style.display = 'none';
+                    status.textContent = 'Ready';
+                    return;
+                }
+                
+                nextKeywordsList.innerHTML = suggestions.map(sug => `
+                    <div class="next-keyword-badge" onclick="insertNextKeyword('${escapeHtml(sug.keyword)}')">
+                        ${escapeHtml(sug.keyword)}
+                    </div>
+                `).join('');
+                
+                nextKeywordsPanel.style.display = 'block';
+                status.textContent = 'Ready';
+            } catch (error) {
+                status.textContent = 'Error loading suggestions';
+                console.error('Error:', error);
+            }
+        }
+        
+        // Insert next keyword
+        function insertNextKeyword(keyword) {
+            const cursorPos = editor.selectionStart;
+            const text = editor.value;
+            const textBeforeCursor = text.substring(0, cursorPos);
+            const textAfterCursor = text.substring(cursorPos);
+            
+            // Check if we're at end of line or on new line
+            const isNewLine = textBeforeCursor.endsWith('\n') || textBeforeCursor === '';
+            const needsNewline = !isNewLine && !textBeforeCursor.endsWith(' ');
+            
+            editor.value = textBeforeCursor + 
+                          (needsNewline ? '\n' : '') + 
+                          keyword + 
+                          '\n' + 
+                          textAfterCursor;
+            
+            const newCursorPos = cursorPos + (needsNewline ? 1 : 0) + keyword.length + 1;
+            editor.setSelectionRange(newCursorPos, newCursorPos);
+            editor.focus();
+            
+            loadNextKeywords();
+        }
+        
+        // Handle editor input
+        editor.addEventListener('input', function() {
+            clearTimeout(autocompleteTimeout);
+            const currentLine = getCurrentLine();
+            const currentWord = currentLine.trim();
+            
+            // Hide autocomplete on Enter or if line is empty
+            if (currentWord.length === 0) {
+                hideAutocomplete();
+                loadNextKeywords();
+                return;
+            }
+            
+            // Show autocomplete for partial keywords (2+ characters)
+            if (currentWord.length >= 2) {
+                autocompleteTimeout = setTimeout(async () => {
+                    try {
+                        const suggestions = await suggester.getAutocomplete(currentWord, null);
+                        if (suggestions.length > 0) {
+                            showAutocomplete(suggestions.slice(0, 10), editor.selectionStart);
+                        } else {
+                            hideAutocomplete();
+                        }
+                    } catch (error) {
+                        console.error('Autocomplete error:', error);
+                        hideAutocomplete();
+                    }
+                }, 300);
+            } else {
+                hideAutocomplete();
+            }
+            
+            // Update next keywords when line changes
+            loadNextKeywords();
+        });
+        
+        // Handle Enter key
+        editor.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') {
+                hideAutocomplete();
+                // Small delay to let Enter process, then load suggestions
+                setTimeout(loadNextKeywords, 50);
+            }
+            
+            // Handle arrow keys in autocomplete
+            if (autocompleteDropdown.style.display === 'block') {
+                if (e.key === 'ArrowDown') {
+                    e.preventDefault();
+                    selectedIndex = Math.min(selectedIndex + 1, currentAutocomplete.length - 1);
+                    updateAutocompleteSelection();
+                } else if (e.key === 'ArrowUp') {
+                    e.preventDefault();
+                    selectedIndex = Math.max(selectedIndex - 1, -1);
+                    updateAutocompleteSelection();
+                } else if (e.key === 'Tab' || e.key === 'Enter') {
+                    e.preventDefault();
+                    if (selectedIndex >= 0) {
+                        selectAutocomplete(selectedIndex);
+                    } else if (currentAutocomplete.length > 0) {
+                        selectAutocomplete(0);
+                    }
+                } else if (e.key === 'Escape') {
+                    hideAutocomplete();
+                }
+            }
+        });
+        
+        // Update autocomplete selection highlight
+        function updateAutocompleteSelection() {
+            const items = autocompleteDropdown.querySelectorAll('.autocomplete-item');
+            items.forEach((item, index) => {
+                item.classList.toggle('selected', index === selectedIndex);
+            });
+        }
+        
+        // Click outside to hide autocomplete
+        document.addEventListener('click', function(e) {
+            if (!autocompleteDropdown.contains(e.target) && e.target !== editor) {
+                hideAutocomplete();
+            }
+        });
+        
+        // Click on autocomplete item
+        autocompleteDropdown.addEventListener('click', function(e) {
+            const item = e.target.closest('.autocomplete-item');
+            if (item) {
+                const index = parseInt(item.dataset.index);
+                selectAutocomplete(index);
+            }
+        });
+        
+        // Escape HTML
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+        
+        // Focus editor on load
+        editor.focus();
+    </script>
+</body>
+</html>
+

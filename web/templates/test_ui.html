@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Robot Framework Keyword Suggestions - Test UI</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 30px;
+            text-align: center;
+        }
+        
+        .header h1 {
+            font-size: 2em;
+            margin-bottom: 10px;
+        }
+        
+        .header p {
+            opacity: 0.9;
+            font-size: 1em;
+        }
+        
+        .content {
+            padding: 30px;
+        }
+        
+        .test-case {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 20px;
+            min-height: 200px;
+        }
+        
+        .test-case-title {
+            font-size: 1.2em;
+            font-weight: 600;
+            margin-bottom: 15px;
+            color: #333;
+            border-bottom: 2px solid #667eea;
+            padding-bottom: 10px;
+        }
+        
+        .keyword-line {
+            display: flex;
+            align-items: center;
+            margin-bottom: 10px;
+            padding: 8px;
+            background: white;
+            border-radius: 4px;
+            border-left: 3px solid #667eea;
+        }
+        
+        .keyword-number {
+            color: #667eea;
+            font-weight: 600;
+            margin-right: 10px;
+            min-width: 30px;
+        }
+        
+        .keyword-text {
+            flex: 1;
+            font-family: 'Courier New', monospace;
+            color: #333;
+        }
+        
+        .input-container {
+            display: flex;
+            gap: 10px;
+            margin-top: 15px;
+        }
+        
+        .keyword-input {
+            flex: 1;
+            padding: 12px 15px;
+            font-size: 16px;
+            border: 2px solid #ddd;
+            border-radius: 6px;
+            font-family: 'Courier New', monospace;
+        }
+        
+        .keyword-input:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+        
+        .btn-add {
+            padding: 12px 25px;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        
+        .btn-add:hover {
+            background: #5568d3;
+        }
+        
+        .suggestions-container {
+            margin-top: 20px;
+        }
+        
+        .suggestions-title {
+            font-size: 1em;
+            font-weight: 600;
+            color: #666;
+            margin-bottom: 10px;
+        }
+        
+        .suggestions {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        
+        .suggestion-item {
+            padding: 12px 15px;
+            background: white;
+            border: 2px solid #e0e0e0;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .suggestion-item:hover {
+            border-color: #667eea;
+            background: #f0f4ff;
+            transform: translateX(5px);
+        }
+        
+        .suggestion-keyword {
+            font-family: 'Courier New', monospace;
+            font-weight: 600;
+            color: #667eea;
+            font-size: 1em;
+        }
+        
+        .suggestion-meta {
+            display: flex;
+            gap: 15px;
+            font-size: 0.85em;
+            color: #666;
+        }
+        
+        .suggestion-confidence {
+            background: #667eea;
+            color: white;
+            padding: 4px 10px;
+            border-radius: 12px;
+            font-weight: 600;
+        }
+        
+        .empty-state {
+            text-align: center;
+            padding: 40px;
+            color: #999;
+        }
+        
+        .empty-state-icon {
+            font-size: 3em;
+            margin-bottom: 10px;
+        }
+        
+        .controls {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px solid #e0e0e0;
+        }
+        
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 6px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        .btn-clear {
+            background: #f0f0f0;
+            color: #666;
+        }
+        
+        .btn-clear:hover {
+            background: #e0e0e0;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #667eea;
+        }
+        
+        .error {
+            background: #fee;
+            color: #c33;
+            padding: 10px;
+            border-radius: 6px;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Robot Framework Keyword Suggestions</h1>
+            <p>Test UI - Enter keywords and get suggestions</p>
+        </div>
+        
+        <div class="content">
+            <div class="test-case">
+                <div class="test-case-title">Test Case Keywords</div>
+                <div id="keywords-container">
+                    <div class="empty-state">
+                        <div class="empty-state-icon">📝</div>
+                        <div>Start typing keywords below...</div>
+                    </div>
+                </div>
+                
+                <div class="input-container">
+                    <input 
+                        type="text" 
+                        id="keyword-input" 
+                        class="keyword-input" 
+                        placeholder="Type keyword and press Enter..."
+                        autocomplete="off"
+                    >
+                    <button class="btn-add" onclick="addKeyword()">Add</button>
+                </div>
+                
+                <div id="suggestions-container" class="suggestions-container" style="display: none;">
+                    <div class="suggestions-title">💡 Suggested Next Keywords:</div>
+                    <div id="suggestions" class="suggestions"></div>
+                </div>
+                
+                <div id="error-container"></div>
+                
+                <div class="controls">
+                    <button class="btn btn-clear" onclick="clearAll()">Clear All</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Include the JavaScript module -->
+    <script src="/static/js/robot_keyword_suggestions.js"></script>
+    
+    <script>
+        // Initialize suggester
+        const suggester = new KeywordSuggester('http://localhost:5000/api');
+        
+        // Track keywords
+        let keywords = [];
+        
+        // Get DOM elements
+        const keywordInput = document.getElementById('keyword-input');
+        const keywordsContainer = document.getElementById('keywords-container');
+        const suggestionsContainer = document.getElementById('suggestions-container');
+        const suggestionsDiv = document.getElementById('suggestions');
+        const errorContainer = document.getElementById('error-container');
+        
+        // Add keyword on Enter
+        keywordInput.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                addKeyword();
+            }
+        });
+        
+        // Focus input on load
+        keywordInput.focus();
+        
+        // Add keyword function
+        async function addKeyword() {
+            const keyword = keywordInput.value.trim();
+            if (!keyword) {
+                return;
+            }
+            
+            // Add to list
+            keywords.push(keyword);
+            displayKeywords();
+            
+            // Clear input
+            keywordInput.value = '';
+            
+            // Get suggestions
+            await loadSuggestions();
+            
+            // Focus input again
+            keywordInput.focus();
+        }
+        
+        // Display keywords
+        function displayKeywords() {
+            if (keywords.length === 0) {
+                keywordsContainer.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">📝</div>
+                        <div>Start typing keywords below...</div>
+                    </div>
+                `;
+                suggestionsContainer.style.display = 'none';
+                return;
+            }
+            
+            keywordsContainer.innerHTML = keywords.map((kw, index) => `
+                <div class="keyword-line">
+                    <span class="keyword-number">${index + 1}.</span>
+                    <span class="keyword-text">${escapeHtml(kw)}</span>
+                </div>
+            `).join('');
+        }
+        
+        // Load suggestions
+        async function loadSuggestions() {
+            errorContainer.innerHTML = '';
+            suggestionsDiv.innerHTML = '<div class="loading">Loading suggestions...</div>';
+            suggestionsContainer.style.display = 'block';
+            
+            try {
+                const suggestions = await suggester.getNextKeywords(keywords, 3);
+                
+                if (suggestions.length === 0) {
+                    suggestionsDiv.innerHTML = '<div class="empty-state">No suggestions available</div>';
+                    return;
+                }
+                
+                suggestionsDiv.innerHTML = suggestions.map(sug => `
+                    <div class="suggestion-item" onclick="selectSuggestion('${escapeHtml(sug.keyword)}')">
+                        <span class="suggestion-keyword">${escapeHtml(sug.keyword)}</span>
+                        <div class="suggestion-meta">
+                            <span>Used ${sug.usage_count || 0} times</span>
+                            ${sug.confidence ? `<span class="suggestion-confidence">${sug.confidence}%</span>` : ''}
+                        </div>
+                    </div>
+                `).join('');
+            } catch (error) {
+                errorContainer.innerHTML = `<div class="error">Error: ${error.message}</div>`;
+                suggestionsDiv.innerHTML = '';
+            }
+        }
+        
+        // Select suggestion
+        function selectSuggestion(keyword) {
+            // Add selected keyword
+            keywords.push(keyword);
+            displayKeywords();
+            
+            // Get new suggestions
+            loadSuggestions();
+            
+            // Focus input
+            keywordInput.focus();
+        }
+        
+        // Clear all
+        function clearAll() {
+            keywords = [];
+            displayKeywords();
+            suggestionsContainer.style.display = 'none';
+            keywordInput.focus();
+        }
+        
+        // Escape HTML
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+        
+        // Auto-load suggestions when typing (debounced)
+        let debounceTimeout;
+        keywordInput.addEventListener('input', function() {
+            clearTimeout(debounceTimeout);
+            debounceTimeout = setTimeout(async () => {
+                const partial = this.value.trim();
+                if (partial.length >= 2 && keywords.length > 0) {
+                    // Could show autocomplete here if needed
+                }
+            }, 300);
+        });
+    </script>
+</body>
+</html>
+

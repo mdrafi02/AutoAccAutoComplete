@@ -7,6 +7,18 @@ __pycache__/
 *.egg-info/
 dist/
 build/
+develop-eggs/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+.installed.cfg
+*.egg
 
 # Virtual Environment
 venv/
@@ -29,6 +41,17 @@ tfjs_model/
 # keyword_dataset*.json
 # test_output.json
 
+# Data files (large files, exclude from git)
+data/xml_files/**/*
+data/exports/**
+data/models/**
+
+# Keep directory structure but ignore contents
+!data/xml_files/.gitkeep
+!data/exports/.gitkeep
+!data/models/.gitkeep
+!data/xml_files/README.md
+
 # IDE
 .vscode/
 .idea/
@@ -47,3 +70,7 @@ Thumbs.db
 *.tmp
 *.bak
 
+# Project specific
+keywords*.json
+keywords*.csv
+output.xml

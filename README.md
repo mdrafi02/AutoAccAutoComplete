@@ -422,6 +422,36 @@ See [CRON_SETUP.md](CRON_SETUP.md) for detailed setup instructions and troublesh
 - Review [INCREMENTAL_UPDATE_GUIDE.md](INCREMENTAL_UPDATE_GUIDE.md) for update procedures
 - Check server logs for detailed error messages
 
+
+## Flask Sequence-Based Recommender
+
+An alternative lightweight keyword suggestion system using sequence pattern matching (no TensorFlow required). Trains on Robot Framework `output.xml` files and provides suggestions via Flask REST API and JavaScript.
+
+### Quick Start
+
+```bash
+pip install Flask Werkzeug
+python3 train_with_new_data.py          # Train on XML files in data/xml_files/
+python3 web/web_recommender.py          # Start server on http://localhost:5000
+```
+
+### Key Components
+
+- `ml_models/robot_keyword_recommender.py` — pattern-matching model with fuzzy context and n-gram fallback
+- `web/web_recommender.py` — Flask API (`/api/next-keywords`, `/api/autocomplete`, etc.)
+- `web/static/js/robot_keyword_suggestions.js` — JavaScript `KeywordSuggester` class
+- `use_model.py` — CLI for querying the trained `.pkl` model
+
+### API Example
+
+```bash
+curl -X POST http://localhost:5000/api/next-keywords \
+  -H "Content-Type: application/json" \
+  -d '{"keywords": ["Log To Console"], "max": 3}'
+```
+
+See [DATA_ANALYSIS.md](DATA_ANALYSIS.md) and [MODEL_COMPARISON.md](MODEL_COMPARISON.md) for model details.
+
 ## 🔗 Additional Documentation
 
 - [API_USAGE.md](API_USAGE.md) - Complete API reference and examples
