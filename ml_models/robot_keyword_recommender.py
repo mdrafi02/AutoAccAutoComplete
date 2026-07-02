@@ -328,17 +328,17 @@ class RobotKeywordRecommender:
         print(f"Training on {len(output_files)} output files...")
         
         for i, output_file in enumerate(output_files, 1):
-            print(f"Processing file {i}/{len(output_files)}: {output_file}")
+            print(f"Processing file {i}/{len(output_files)}: {output_file}", flush=True)
             try:
                 self.analyzer.analyze_output_file(output_file)
             except Exception as e:
-                print(f"Error processing {output_file}: {e}")
+                print(f"Error processing {output_file}: {e}", flush=True)
         
-        print(f"Training complete. Analyzed {len(self.analyzer.keyword_sequences)} sequences.")
+        print(f"Training complete. Analyzed {len(self.analyzer.keyword_sequences)} sequences.", flush=True)
         
         if save_model:
             self.analyzer.save_model(save_model)
-            print(f"Model saved to {save_model}")
+            print(f"Model saved to {save_model}", flush=True)
     
     def get_recommendations(self, current_keyword: str, context: str = "", 
                           max_recommendations: int = 10) -> List[Dict]:
